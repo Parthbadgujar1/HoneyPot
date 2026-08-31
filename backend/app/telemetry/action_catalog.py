@@ -5,6 +5,8 @@ This maps raw event types/commands into high-level categorical labels so that
 the ML feature space is stable regardless of the specific honeypot source.
 """
 
+from typing import Optional
+
 import re
 
 # Behaviour-stage labels used by the classifier and sequence model.

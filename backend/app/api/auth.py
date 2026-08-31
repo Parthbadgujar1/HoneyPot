@@ -12,6 +12,7 @@ from app.security.auth import (
     create_access_token,
     get_current_user,
     hash_password,
+    require_role,
     verify_password,
 )
 from app.services.audit import write_audit
@@ -39,6 +40,33 @@ def user_out(u: User) -> dict:
 
 @router.post("/register", status_code=201)
 def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    # Public self-registration is limited to the least-privileged role.
+    # Any role supplied by the client is ignored; privileged roles are only
+    # granted by an admin via POST /auth/users.
+    role = "VIEWER"
+    existing = db.query(User).filter(User.username == payload.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    user = User(
+        username=payload.username,
+        email=payload.email,
+        hashed_password=hash_password(payload.password),
+        role=role,
+    )
+    db.add(user)
+    db.commit()
+    write_audit(
+        db, action="user_registered", resource_type="user", resource_id=user.username
+    )
+    return {"id": user.id, "username": user.username, "role": user.role}
+
+
+@router.post("/users", status_code=201)
+def create_user(
+    payload: RegisterRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("ADMIN")),
+):
     if payload.role not in ("ADMIN", "ANALYST", "RESEARCHER", "VIEWER"):
         raise HTTPException(status_code=400, detail="Invalid role")
     existing = db.query(User).filter(User.username == payload.username).first()
@@ -53,7 +81,11 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     write_audit(
-        db, action="user_registered", resource_type="user", resource_id=user.username
+        db,
+        action="user_created",
+        resource_type="user",
+        user_id=_.id,
+        resource_id=user.username,
     )
     return {"id": user.id, "username": user.username, "role": user.role}
 

@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import get_settings
 from app.core.database import SessionLocal, engine
@@ -27,50 +28,52 @@ async def lifespan(app: FastAPI):
     adapter = default_adapter()
     collector = TelemetryCollector(SessionLocal, adapter)
 
-    # seed an admin user so login works out of the box
-    from app.models.models import User
-    from app.security.auth import hash_password
-
+    # Seed demo users ONLY in debug/dev so default credentials are never
+    # created in production.
     db = SessionLocal()
-    if not db.query(User).filter(User.username == "admin").first():
-        db.add(
-            User(
-                username="admin",
-                email="admin@example.com",
-                hashed_password=hash_password("admin123"),
-                role="ADMIN",
-            )
-        )
-        db.add(
-            User(
-                username="analyst",
-                email="analyst@example.com",
-                hashed_password=hash_password("analyst123"),
-                role="ANALYST",
-            )
-        )
-        db.add(
-            User(
-                username="viewer",
-                email="viewer@example.com",
-                hashed_password=hash_password("viewer123"),
-                role="VIEWER",
-            )
-        )
-        db.commit()
-    db.close()
+    try:
+        if settings.DEBUG:
+            from app.models.models import User
+            from app.security.auth import hash_password
+
+            seeded = [
+                ("admin", "admin@example.com", "admin123", "ADMIN"),
+                ("analyst", "analyst@example.com", "analyst123", "ANALYST"),
+                ("viewer", "viewer@example.com", "viewer123", "VIEWER"),
+            ]
+            for username, email, password, role in seeded:
+                if not db.query(User).filter(User.username == username).first():
+                    db.add(
+                        User(
+                            username=username,
+                            email=email,
+                            hashed_password=hash_password(password),
+                            role=role,
+                        )
+                    )
+            db.commit()
+    finally:
+        db.close()
 
     app.state.adapter = adapter
     app.state.collector = collector
     app.state.db_factory = SessionLocal
 
-    db = SessionLocal()
-    app.state.deception_engine = DeceptionEngine(db, adapter=adapter)
-    db.close()
+    # Keep a dedicated session open for the lifetime of the process; the
+    # engine retains and reuses it across calls. Closed on shutdown below.
+    engine_db = SessionLocal()
+    app.state.deception_engine = DeceptionEngine(engine_db, adapter=adapter)
+    app.state.deception_engine_db = engine_db
 
     collector.start()
     logger.info("SentinelTrap started")
     yield
+    db = getattr(app.state, "deception_engine_db", None)
+    if db is not None:
+        try:
+            db.close()
+        except Exception:
+            pass
     collector.stop()
     logger.info("SentinelTrap stopped")
 
@@ -90,8 +93,14 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+    ],
 )
 
 
@@ -124,11 +133,16 @@ def health():
 def ready():
     try:
         db = SessionLocal()
-        db.execute("SELECT 1")
-        db.close()
+        try:
+            db.execute(text("SELECT 1"))
+        finally:
+            db.close()
         return {"status": "ready", "db": "ok"}
-    except Exception as e:
-        return JSONResponse(status_code=503, content={"status": "not_ready", "db": str(e)})
+    except Exception:
+        # do not leak DB connection details / secrets to the caller
+        return JSONResponse(
+            status_code=503, content={"status": "not_ready", "db": "unavailable"}
+        )
 
 
 # Routers

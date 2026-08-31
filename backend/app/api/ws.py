@@ -2,15 +2,25 @@
 
 import asyncio
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
+from app.security.auth import decode_token
 from app.websocket.bus import event_bus
 
 router = APIRouter()
 
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(
+    websocket: WebSocket, token: str = Query(..., alias="token")
+):
+    # Require a valid access token before accepting the connection.
+    try:
+        decode_token(token)
+    except Exception:
+        await websocket.close(code=4401)
+        return
+
     await websocket.accept()
     loop = asyncio.get_event_loop()
     sub = event_bus.subscribe(loop)

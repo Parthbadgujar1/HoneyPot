@@ -17,6 +17,7 @@ COPY backend/requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY backend/app ./app
+COPY backend/ml ./ml
 
 EXPOSE 8000
 

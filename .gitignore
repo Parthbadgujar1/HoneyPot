@@ -4,6 +4,13 @@ node_modules/
 # build
 dist/
 dist-ssr/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# archived old v1 frontend (superseded by spec rebuild)
+_old_v1_*
+frontend/_old_v1_*
 
 # logs
 *.log

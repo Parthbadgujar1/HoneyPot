@@ -14,6 +14,7 @@ os.environ.setdefault(
     "postgresql+psycopg://sentinel:sentinel_dev_2026@localhost:5432/sentineltrap_test",
 )
 os.environ.setdefault("SECRET_KEY", "test_secret_key")
+os.environ.setdefault("DEBUG", "True")
 
 
 @pytest.fixture(scope="session")

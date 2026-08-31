@@ -2,6 +2,8 @@ from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEFAULT_SECRET_KEY = "CHANGE_ME_dev_secret_key"
+
 
 class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
@@ -14,7 +16,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Security
-    SECRET_KEY: str = "CHANGE_ME_dev_secret_key"  # override in production via env
+    SECRET_KEY: str = DEFAULT_SECRET_KEY  # override in production via env
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     BCRYPT_ROUNDS: int = 12
@@ -52,4 +54,10 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    if not settings.DEBUG and settings.SECRET_KEY == DEFAULT_SECRET_KEY:
+        raise RuntimeError(
+            "SECRET_KEY must be overridden for a non-debug deployment. "
+            "Set the SECRET_KEY environment variable to a strong random value."
+        )
+    return settings
