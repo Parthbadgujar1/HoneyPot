@@ -1,0 +1,4 @@
+mode,sessions,total_events,events_per_session,unique_patterns,behaviour_coverage,max_session_depth,mean_session_depth,high_risk_sessions,anomalies_detected,predictions_made,adaptive_actions
+baseline,60,440,7.33,6,5,13,7.33,0,0,0,0
+ai_assisted,60,440,7.33,6,5,13,7.33,0,40,0,0
+adaptive,60,440,7.33,6,5,13,7.33,0,40,60,40

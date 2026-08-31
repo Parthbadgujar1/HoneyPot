@@ -1,0 +1,82 @@
+[
+  {
+    "mode": "baseline",
+    "scenarios": [
+      "auth_attempts",
+      "discovery",
+      "resource_enumeration",
+      "decoy_access",
+      "multi_stage",
+      "benign"
+    ],
+    "sessions": 60,
+    "total_events": 440,
+    "events_per_session": 7.33,
+    "unique_patterns": 6,
+    "behaviour_coverage": 5,
+    "max_session_depth": 13,
+    "mean_session_depth": 7.33,
+    "classifications": {},
+    "high_risk_sessions": 0,
+    "anomalies_detected": 0,
+    "predictions_made": 0,
+    "adaptive_actions": 0,
+    "run_timestamp": "2026-08-29T16:06:12.717189"
+  },
+  {
+    "mode": "ai_assisted",
+    "scenarios": [
+      "auth_attempts",
+      "discovery",
+      "resource_enumeration",
+      "decoy_access",
+      "multi_stage",
+      "benign"
+    ],
+    "sessions": 60,
+    "total_events": 440,
+    "events_per_session": 7.33,
+    "unique_patterns": 6,
+    "behaviour_coverage": 5,
+    "max_session_depth": 13,
+    "mean_session_depth": 7.33,
+    "classifications": {
+      "other_unknown": 30,
+      "discovery": 20,
+      "resource_access": 10
+    },
+    "high_risk_sessions": 0,
+    "anomalies_detected": 40,
+    "predictions_made": 0,
+    "adaptive_actions": 0,
+    "run_timestamp": "2026-08-29T16:06:12.719692"
+  },
+  {
+    "mode": "adaptive",
+    "scenarios": [
+      "auth_attempts",
+      "discovery",
+      "resource_enumeration",
+      "decoy_access",
+      "multi_stage",
+      "benign"
+    ],
+    "sessions": 60,
+    "total_events": 440,
+    "events_per_session": 7.33,
+    "unique_patterns": 6,
+    "behaviour_coverage": 5,
+    "max_session_depth": 13,
+    "mean_session_depth": 7.33,
+    "classifications": {
+      "other_unknown": 30,
+      "discovery": 20,
+      "resource_access": 10
+    },
+    "high_risk_sessions": 0,
+    "anomalies_detected": 40,
+    "predictions_made": 60,
+    "adaptive_actions": 40,
+    "run_timestamp": "2026-08-29T16:06:12.722157"
+  }
+]

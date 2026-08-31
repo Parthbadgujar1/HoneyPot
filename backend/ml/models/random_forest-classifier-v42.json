@@ -1,0 +1,16 @@
+{
+  "name": "random_forest",
+  "model_type": "classifier",
+  "version": "classifier-v42",
+  "trained_at": "2026-08-29T16:37:02.153383",
+  "metrics": {
+    "accuracy": 1.0,
+    "f1_weighted": 1.0,
+    "precision_weighted": 1.0,
+    "recall_weighted": 1.0,
+    "n_train": 96,
+    "n_test": 24
+  },
+  "feature_version": "v1",
+  "artifact_path": "ml/models\\random_forest-classifier-v42.joblib"
+}

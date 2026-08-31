@@ -1,0 +1,9 @@
+{
+  "name": "isolation_forest",
+  "model_type": "anomaly",
+  "version": "isolation-v42",
+  "trained_at": "2026-08-29T16:37:02.379186",
+  "metrics": {},
+  "feature_version": null,
+  "artifact_path": "ml/models\\isolation_forest-isolation-v42.joblib"
+}

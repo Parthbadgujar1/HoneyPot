@@ -1,0 +1,14 @@
+{
+  "name": "markov",
+  "model_type": "sequence",
+  "version": "markov-v42",
+  "trained_at": "2026-08-29T16:37:02.436993",
+  "metrics": {
+    "top1_accuracy": 0.3333333333333333,
+    "top3_accuracy": 1.0,
+    "mrr": 0.6388888888888881,
+    "sequences_evaluated": 120
+  },
+  "feature_version": null,
+  "artifact_path": "ml/models\\markov-markov-v42.joblib"
+}

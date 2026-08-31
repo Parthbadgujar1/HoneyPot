@@ -1,0 +1,49 @@
+name: sentineltrap
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: sentineltrap-db
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel_dev_2026
+      POSTGRES_DB: sentineltrap
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # host 5433 to avoid clashing with a local postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentineltrap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.backend
+    container_name: sentineltrap-backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev_2026@db:5432/sentineltrap
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost
+      HONEYPOT_ADAPTER: local_simulated
+      DEBUG: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.frontend
+    container_name: sentineltrap-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
