@@ -27,13 +27,31 @@ services:
       DATABASE_URL: postgresql+psycopg://sentinel:sentinel_dev_2026@db:5432/sentineltrap
       SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173,http://localhost
-      HONEYPOT_ADAPTER: local_simulated
+      HONEYPOT_ADAPTER: ${HONEYPOT_ADAPTER:-local_simulated}
+      HONEYPOT_COWRIE_JSONL: /var/log/cowrie/cowrie.json
       DEBUG: "false"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - cowrie-logs:/var/log/cowrie:ro
     ports:
       - "8000:8000"
+
+  # Optional real honeypot. Run only when explicitly enabled to avoid
+  # silently exposing an SSH honeypot to the network:
+  #   docker compose --profile honeypot up
+  cowrie:
+    image: cowrie/cowrie:latest
+    container_name: sentineltrap-cowrie
+    profiles: ["honeypot"]
+    depends_on:
+      - backend
+    volumes:
+      - cowrie-logs:/cowrie/cowrie-git/var/log/cowrie
+    ports:
+      - "2222:2222"   # SSH honeypot (host port 2222)
+    restart: unless-stopped
 
   frontend:
     build:
@@ -47,3 +65,4 @@ services:
 
 volumes:
   pgdata:
+  cowrie-logs:

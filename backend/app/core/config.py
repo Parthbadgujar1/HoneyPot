@@ -34,6 +34,7 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
     # Honeypot
+    HONEYPOT_ADAPTER: str = "local_simulated"  # "local_simulated" | "cowrie"
     HONEYPOT_COWRIE_LOG_PATH: str = "honeypot/cowrie/logs"
     HONEYPOT_COWRIE_JSONL: str = "honeypot/cowrie/logs/cowrie.json"
     HONEYPOT_POLL_INTERVAL: int = 5

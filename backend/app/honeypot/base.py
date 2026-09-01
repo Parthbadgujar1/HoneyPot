@@ -45,6 +45,14 @@ class FileBasedAdapter(HoneypotAdapter):
         self.service = service
         self._seen_positions: dict = {}
 
+    def start(self) -> None:
+        # File-based adapters are passive log readers; nothing to start.
+        return None
+
+    def stop(self) -> None:
+        # File-based adapters are passive log readers; nothing to stop.
+        return None
+
     def status(self) -> dict:
         import os
 
