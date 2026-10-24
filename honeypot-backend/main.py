@@ -37,6 +37,15 @@ app = FastAPI(
 
 
 # --------------------------------------------------
+# Sensor bridge (live decoy data for the dashboard)
+# --------------------------------------------------
+
+from sensor_bridge import router as sensor_router  # noqa: E402
+
+app.include_router(sensor_router)
+
+
+# --------------------------------------------------
 # CORS configuration
 # --------------------------------------------------
 

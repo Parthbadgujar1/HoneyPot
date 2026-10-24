@@ -140,6 +140,14 @@ other students and staff.
 To stop everything and revert the firewall: stop the sensor, then run
 `setup_firewall.ps1 -Undo` as Administrator.
 
+## Monitoring dashboard (port 5173)
+
+The React dashboard reads live sensor data through the FastAPI backend's
+`/sensor` routes (`honeypot-backend/sensor_bridge.py`). The backend calls the
+sensor console on 127.0.0.1 with the admin token, so the token never reaches
+the browser. Keep the backend on 127.0.0.1, and start the sensor first. Set
+`VITE_DATA_SOURCE=postgres` in the frontend to go back to the database routes.
+
 ## Honest limits
 
 - **ML models.** Both models load and score every connection. The CIC-IDS2017

@@ -12,7 +12,7 @@ export default function Topbar({
 }) {
   const titles = {
     overview: ["Security Overview", "Monitor your honeypot activity and detections."],
-    events: ["Connection Events", "Inspect connection attempts stored in PostgreSQL."],
+    events: ["Connection Events", "Inspect connection attempts seen by the decoys."],
     alerts: ["Threat Alerts", "Investigate reconnaissance detections and their evidence."],
   };
 

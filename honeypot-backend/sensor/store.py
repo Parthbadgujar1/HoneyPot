@@ -448,6 +448,7 @@ class Store:
             ).fetchall()
         return [
             {
+                "id": row["id"],
                 "time": _iso(row["ts"]),
                 "src_ip": row["src_ip"],
                 "persona": row["persona"],

@@ -665,5 +665,51 @@ class IntelTests(TempSensor):
         self.assertEqual(report["sources"], 0)
 
 
+class BridgeMappingTests(unittest.TestCase):
+    """The dashboard bridge maps sensor data into the fields the dashboard reads."""
+
+    def test_alert_maps_evidence_into_dashboard_fields(self):
+        import sensor_bridge
+        finding = {
+            "id": 7, "time": "2026-10-24T10:00:00+00:00", "src_ip": "198.51.100.70",
+            "classification": "PORT_SCAN", "severity": "HIGH", "score": 80,
+            "rule_points": 70, "ml_points": 10,
+            "reasons": ["6 distinct ports probed within 60 seconds"],
+            "evidence": {
+                "PORT_SCAN": {"ports": [21, 23, 25, 110, 1433, 2222]},
+                "SERVICE_DISCOVERY": {"service_ports": [21, 23, 25, 110, 1433, 2222]},
+                "BANNER_ENUMERATION": {"silent_connects": 3},
+            },
+            "decision": {"block": {"action": "block"}},
+        }
+        mapped = sensor_bridge._map_alert(finding)
+        self.assertEqual(mapped["id"], 7)
+        self.assertEqual(mapped["source_id"], "198.51.100.70")
+        self.assertEqual(mapped["unique_ports_60s"], 6)
+        self.assertEqual(mapped["attempts_10m"], 6)
+        self.assertAlmostEqual(mapped["failure_ratio_10m"], 0.5)
+        self.assertEqual(mapped["severity"], "HIGH")
+        self.assertEqual(mapped["status"], "ALERT")
+
+    def test_events_report_success_by_kind(self):
+        import sensor_bridge
+        self.assertFalse(sensor_bridge._event_success({"kind": "ssh_auth", "detail": {}}))
+        self.assertTrue(sensor_bridge._event_success(
+            {"kind": "http_request", "detail": {"status": 200}}))
+        self.assertFalse(sensor_bridge._event_success(
+            {"kind": "http_request", "detail": {"status": 401}}))
+        mapped = sensor_bridge._map_event({"id": 1, "src_ip": "198.51.100.71", "dst_port": None,
+                                           "service": "ssh", "time": "t", "kind": "ssh_auth",
+                                           "detail": {}})
+        self.assertEqual(mapped["destination_port"], "—")
+
+    def test_action_id_falls_back_when_sensor_has_no_id(self):
+        import sensor_bridge
+        action = {"src_ip": "198.51.100.72", "time": "2026-10-24T10:00:00+00:00"}
+        first = sensor_bridge._action_id(action)
+        self.assertEqual(first, sensor_bridge._action_id(dict(action)))
+        self.assertEqual(sensor_bridge._action_id({"id": 42, **action}), 42)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

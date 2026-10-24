@@ -1,4 +1,10 @@
 
+// "sensor" (default) reads live decoy data through the backend's /sensor
+// bridge. Set VITE_DATA_SOURCE=postgres to use the original database routes.
+const DATA_SOURCE = import.meta.env.VITE_DATA_SOURCE || "sensor";
+const DATA_PREFIX = DATA_SOURCE === "postgres" ? "" : "/sensor";
+export const SOURCE_LABEL = DATA_SOURCE === "postgres" ? "PostgreSQL" : "Sensor";
+
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000"
 ).replace(/\/+$/, "");
@@ -77,7 +83,7 @@ export const api = {
       params.set("source_id", sourceId.trim());
     }
 
-    return request(`/events?${params}`, signal);
+    return request(`${DATA_PREFIX}/events?${params}`, signal);
   },
 
   // Detection alerts
@@ -101,11 +107,11 @@ export const api = {
       params.set("source_id", sourceId.trim());
     }
 
-    return request(`/alerts?${params}`, signal);
+    return request(`${DATA_PREFIX}/alerts?${params}`, signal);
   },
 
   getAlert(id, signal) {
-    return request(`/alerts/${encodeURIComponent(id)}`, signal);
+    return request(`${DATA_PREFIX}/alerts/${encodeURIComponent(id)}`, signal);
   },
 
   // Deception action history
@@ -124,7 +130,7 @@ export const api = {
       params.set("alert_id", String(alertId));
     }
 
-    return request(`/deception-actions?${params}`, signal);
+    return request(`${DATA_PREFIX}/deception-actions?${params}`, signal);
   },
 
   // Trigger a simulated deception action for an alert
@@ -136,7 +142,7 @@ export const api = {
     }
 
     return postRequest(
-      `/alerts/${encodeURIComponent(id)}/deception`,
+      `${DATA_PREFIX}/alerts/${encodeURIComponent(id)}/deception`,
       signal
     );
   },
@@ -147,6 +153,6 @@ export const api = {
   },
 
   getDatabaseHealth(signal) {
-    return request("/db-health", signal);
+    return request(DATA_SOURCE === "postgres" ? "/db-health" : "/sensor/health", signal);
   },
 };

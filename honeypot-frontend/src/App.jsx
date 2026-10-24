@@ -13,7 +13,7 @@ import {
   Server,
 } from "lucide-react";
 
-import { api } from "./services/api";
+import { api, SOURCE_LABEL } from "./services/api";
 import Sidebar from "./components/Sidebar";
 import Topbar from "./components/Topbar";
 import StatCard from "./components/StatCard";
@@ -457,7 +457,7 @@ export default function App() {
             <div>
               <strong>Honeypot monitoring environment</strong>
               <span>
-                Detection history is sourced from your FastAPI backend.
+                Live detection data from the sensor, read through the FastAPI backend.
               </span>
             </div>
             <div className="environment-status">
@@ -635,7 +635,7 @@ export default function App() {
 
           <footer className="app-footer">
             <div>
-              <Database size={14} /> PostgreSQL:{" "}
+              <Database size={14} /> {SOURCE_LABEL}:{" "}
               <strong>
                 {databaseStatus === "online"
                   ? "Connected"
