@@ -711,5 +711,21 @@ class BridgeMappingTests(unittest.TestCase):
         self.assertEqual(sensor_bridge._action_id({"id": 42, **action}), 42)
 
 
+class FirewallSummaryTests(unittest.TestCase):
+    """The dashboard explains whether blocks are really applied."""
+
+    def _state(self, **firewall):
+        import sensor_bridge
+        base = {"enabled": True, "enforce": False, "elevated": True, "mode": "dry_run"}
+        base.update(firewall)
+        return sensor_bridge._firewall_summary(base)["state"]
+
+    def test_states(self):
+        self.assertEqual(self._state(enforce=False), "dry_run")
+        self.assertEqual(self._state(enforce=True, elevated=True, mode="enforce"), "enforce")
+        self.assertEqual(self._state(enforce=True, elevated=False, mode="enforce"), "not_elevated")
+        self.assertEqual(self._state(enabled=False), "disabled")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

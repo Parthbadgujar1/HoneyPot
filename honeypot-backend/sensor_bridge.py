@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from sensor.config import load_config, sensor_path
 
@@ -153,6 +154,38 @@ def _map_action(action: dict, findings: list[dict]) -> dict:
     }
 
 
+def _map_block(block: dict) -> dict:
+    return {
+        "id": block["id"],
+        "ip": block["ip"],
+        "status": block["status"],
+        "mode": block["mode"],
+        "source": block["source"],
+        "reason": block["reason"],
+        "created": block["created"],
+        "expires": block["expires"],
+        "released": block["released"],
+        "error": block["error"],
+    }
+
+
+def _firewall_summary(firewall: dict) -> dict:
+    """What the dashboard needs to explain whether blocks really apply."""
+    if not firewall["enabled"]:
+        state, message = "disabled", "Blocking is turned off in the sensor config."
+    elif firewall["enforce"] and firewall["elevated"]:
+        state, message = "enforce", "Blocks are applied as Windows Firewall rules."
+    elif firewall["enforce"]:
+        state, message = "not_elevated", (
+            "The sensor is not running as Administrator, so blocks will fail. "
+            "Restart the sensor from an Administrator shell."
+        )
+    else:
+        state, message = "dry_run", "Dry run: blocks are recorded but no firewall rule is created."
+    return {"state": state, "message": message, "mode": firewall["mode"],
+            "enforce": firewall["enforce"], "elevated": firewall["elevated"]}
+
+
 def _all_findings() -> list[dict]:
     return _call("GET", "/api/findings", {"limit": SENSOR_LIMIT})["findings"]
 
@@ -263,3 +296,54 @@ def raise_engagement(alert_id: int) -> dict:
                                "note": "Decoy content served to this source"},
         "simulation_only": False,
     }
+
+
+# ----------------------------------------------------------------------
+# Blocks: the same operations as the sensor console, with the same safety
+# checks (protected addresses, allowlist, maximum active blocks) applied
+# by the sensor itself.
+# ----------------------------------------------------------------------
+
+class BlockRequest(BaseModel):
+    ip: str = Field(min_length=3, max_length=45)
+    reason: str = Field(default="blocked from the monitoring dashboard", max_length=200)
+    ttl_minutes: int | None = Field(default=None, ge=0, le=60 * 24 * 365)
+
+
+def _block_response(body: dict) -> dict:
+    result = _call("POST", "/api/blocks", body=body)
+    return _map_block(result)
+
+
+@router.get("/blocks")
+def blocks() -> dict:
+    data = _call("GET", "/api/blocks")
+    return {
+        "active": [_map_block(item) for item in data["active"]],
+        "history": [_map_block(item) for item in data["history"]],
+        "firewall": _firewall_summary(data["firewall"]),
+    }
+
+
+@router.post("/blocks")
+def block_source(body: BlockRequest) -> dict:
+    payload = {"ip": body.ip, "reason": body.reason}
+    if body.ttl_minutes is not None:
+        payload["ttl_minutes"] = body.ttl_minutes
+    return _block_response(payload)
+
+
+@router.delete("/blocks/{ip}")
+def unblock_source(ip: str) -> dict:
+    return _map_block(_call("DELETE", f"/api/blocks/{ip}"))
+
+
+@router.post("/alerts/{alert_id}/block")
+def block_alert_source(alert_id: int) -> dict:
+    finding = next((f for f in _all_findings() if f["id"] == alert_id), None)
+    if finding is None:
+        raise HTTPException(404, "Alert not found")
+    return _block_response({
+        "ip": finding["src_ip"],
+        "reason": f"blocked from the monitoring dashboard (alert #{alert_id})",
+    })

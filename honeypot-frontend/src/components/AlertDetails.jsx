@@ -7,8 +7,11 @@ import {
   Eye,
   AlertTriangle,
   LoaderCircle,
+  Ban,
+  Unlock,
 } from "lucide-react";
 import { api } from "../services/api";
+import { FirewallBanner } from "./BlocksPanel";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -16,7 +19,18 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 }
 
-export default function AlertDetails({ alert, onClose, onDeceptionTriggered }) {
+export default function AlertDetails({
+  alert,
+  blocks,
+  onBlock,
+  onUnblock,
+  onClose,
+  onDeceptionTriggered,
+}) {
+  const [blockConfirming, setBlockConfirming] = useState(false);
+  const [blockBusy, setBlockBusy] = useState(false);
+  const [blockMessage, setBlockMessage] = useState("");
+  const [blockError, setBlockError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [deceptionResult, setDeceptionResult] = useState(null);
@@ -47,6 +61,25 @@ export default function AlertDetails({ alert, onClose, onDeceptionTriggered }) {
   }
 
   if (!alert) return null;
+
+  const activeBlock = (blocks?.active || []).find(
+    (block) => block.ip === alert.source_id
+  );
+  const blockedNow = Boolean(activeBlock);
+
+  async function runBlockAction(action) {
+    setBlockBusy(true);
+    setBlockError("");
+    setBlockMessage("");
+    const result = await action(alert.source_id);
+    setBlockBusy(false);
+    setBlockConfirming(false);
+    if (result.ok) {
+      setBlockMessage(blockedNow ? "Source unblocked." : "Source blocked.");
+    } else {
+      setBlockError(result.message);
+    }
+  }
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -159,6 +192,108 @@ export default function AlertDetails({ alert, onClose, onDeceptionTriggered }) {
               No reason details were recorded for this alert.
             </p>
           )}
+        </div>
+
+        <div className="detail-section">
+          <h3>
+            <Ban size={17} style={{ verticalAlign: "middle", marginRight: 6 }} />
+            Firewall response
+          </h3>
+
+          <FirewallBanner firewall={blocks?.firewall} />
+
+          {blockedNow ? (
+            <p className="muted-text" style={{ marginTop: 10 }}>
+              Blocked since {formatDate(activeBlock.created)}
+              {activeBlock.expires
+                ? `, expires ${formatDate(activeBlock.expires)}`
+                : ", permanent"}
+              {activeBlock.status === "DRY_RUN" && " (dry run: not applied to the firewall)"}
+            </p>
+          ) : (
+            <p className="muted-text" style={{ marginTop: 10 }}>
+              This source is not blocked.
+            </p>
+          )}
+
+          {blockError && (
+            <div className="error-banner" role="alert" style={{ marginTop: 10 }}>
+              <AlertTriangle size={18} />
+              <div>
+                <strong>{blockedNow ? "Unblock failed" : "Block refused"}</strong>
+                <p>{blockError}</p>
+              </div>
+            </div>
+          )}
+
+          {blockMessage && !blockError && (
+            <p role="status" className="muted-text" style={{ marginTop: 10 }}>
+              {blockMessage}
+            </p>
+          )}
+
+          <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {blockedNow ? (
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => runBlockAction(onUnblock)}
+                disabled={blockBusy}
+              >
+                <Unlock size={16} />
+                {blockBusy ? "Unblocking..." : "Unblock source"}
+              </button>
+            ) : blockConfirming ? (
+              <div
+                style={{
+                  border: "1px solid var(--border-color, #dfe3e8)",
+                  borderRadius: 10,
+                  padding: 14,
+                  display: "grid",
+                  gap: 12,
+                  width: "100%",
+                }}
+              >
+                <strong>Block {alert.source_id}?</strong>
+                <p className="muted-text">
+                  The sensor refuses protected addresses (this machine, the
+                  gateway, and the allowlist). Blocks expire after the TTL in the
+                  sensor config unless you unblock earlier.
+                </p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={() => setBlockConfirming(false)}
+                    disabled={blockBusy}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="button-primary"
+                    onClick={() => runBlockAction(onBlock)}
+                    disabled={blockBusy}
+                  >
+                    {blockBusy ? "Blocking..." : "Confirm block"}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="button-primary"
+                onClick={() => {
+                  setBlockMessage("");
+                  setBlockError("");
+                  setBlockConfirming(true);
+                }}
+              >
+                <Ban size={16} />
+                Block source
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Interactive simulated deception workflow */}

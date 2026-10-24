@@ -22,6 +22,7 @@ import SeverityChart from "./components/SeverityChart";
 import EventsTable from "./components/EventsTable";
 import AlertsTable from "./components/AlertsTable";
 import AlertDetails from "./components/AlertDetails";
+import BlocksPanel from "./components/BlocksPanel";
 
 
 const REFRESH_INTERVAL = 15000;
@@ -242,6 +243,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [deceptionActions, setDeceptionActions] = useState([]);
+  const [blocks, setBlocks] = useState({ active: [], history: [], firewall: null });
   const [selectedAlert, setSelectedAlert] = useState(null);
 
   const [search, setSearch] = useState("");
@@ -300,6 +302,12 @@ export default function App() {
       setDeceptionError(
         err.message || "Could not load deception history."
       );
+    }
+
+    try {
+      setBlocks(await api.getBlocks());
+    } catch {
+      // Blocks are optional for the dashboard; keep the last known state.
     }
 
     try {
@@ -388,6 +396,32 @@ export default function App() {
     () => buildActivityData(events),
     [events]
   );
+
+  // Both handlers return { ok, message } so the dialog and panel can show
+  // the sensor's own reason when a block or unblock is refused.
+  const refreshBlocks = useCallback(async () => {
+    setBlocks(await api.getBlocks());
+  }, []);
+
+  const blockSource = async (ip) => {
+    try {
+      await api.blockSource(ip, "blocked from the monitoring dashboard");
+      await refreshBlocks();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message || "The block was refused." };
+    }
+  };
+
+  const unblockSource = async (ip) => {
+    try {
+      await api.unblockSource(ip);
+      await refreshBlocks();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message || "The unblock failed." };
+    }
+  };
 
   const openAlert = async (alert) => {
     setSelectedAlert(alert);
@@ -561,6 +595,8 @@ export default function App() {
                     />
                   </section>
 
+                  <BlocksPanel blocks={blocks} onUnblock={unblockSource} />
+
                   <DeceptionHistory
                     actions={deceptionActions}
                     loading={refreshing || loading}
@@ -654,6 +690,9 @@ export default function App() {
 
       <AlertDetails
         alert={selectedAlert}
+        blocks={blocks}
+        onBlock={blockSource}
+        onUnblock={unblockSource}
         onClose={() => setSelectedAlert(null)}
         onDeceptionTriggered={async () => {
           const result = await api.getDeceptionActions({

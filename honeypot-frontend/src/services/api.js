@@ -68,6 +68,60 @@ async function postRequest(endpoint, signal) {
 }
 
 // --------------------------------------------------
+// POST request helper with a JSON body
+// --------------------------------------------------
+
+async function postJsonRequest(endpoint, body, signal) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (!response.ok) {
+    let message = `API request failed (${response.status})`;
+    try {
+      const payload = await response.json();
+      message = payload.detail || message;
+    } catch {
+      // Keep the fallback error message if the response isn't JSON.
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+// --------------------------------------------------
+// DELETE request helper
+// --------------------------------------------------
+
+async function deleteRequest(endpoint, signal) {
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+    signal,
+  });
+
+  if (!response.ok) {
+    let message = `API request failed (${response.status})`;
+    try {
+      const body = await response.json();
+      message = body.detail || message;
+    } catch {
+      // Keep the fallback error message if the response isn't JSON.
+    }
+    throw new Error(message);
+  }
+
+  return response.json();
+}
+
+// --------------------------------------------------
 // API methods
 // --------------------------------------------------
 
@@ -145,6 +199,27 @@ export const api = {
       `${DATA_PREFIX}/alerts/${encodeURIComponent(id)}/deception`,
       signal
     );
+  },
+
+  // Firewall blocks (sensor only; the sensor applies its own safety checks)
+  getBlocks(signal) {
+    return request(`${DATA_PREFIX}/blocks`, signal);
+  },
+
+  blockSource(ip, reason, ttlMinutes, signal) {
+    const body = { ip, reason };
+    if (ttlMinutes !== undefined && ttlMinutes !== null) {
+      body.ttl_minutes = ttlMinutes;
+    }
+    return postJsonRequest(`${DATA_PREFIX}/blocks`, body, signal);
+  },
+
+  unblockSource(ip, signal) {
+    return deleteRequest(`${DATA_PREFIX}/blocks/${encodeURIComponent(ip)}`, signal);
+  },
+
+  blockAlertSource(alertId, signal) {
+    return postRequest(`${DATA_PREFIX}/alerts/${encodeURIComponent(alertId)}/block`, signal);
   },
 
   // Health checks
