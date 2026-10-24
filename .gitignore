@@ -1,0 +1,20 @@
+# Secrets and local configuration
+.env
+**/.env
+
+# Python
+venv313/
+__pycache__/
+*.py[cod]
+
+# Honeypot runtime data: database, SSH host key, admin token, logs
+honeypot-backend/sensor/data/
+*.log
+
+# Node
+node_modules/
+
+# Raw datasets (too large for GitHub; the trained models are kept)
+MachineLearningCVE/
+MachineLearningCSV.zip
+UNSW_NB15_*.csv

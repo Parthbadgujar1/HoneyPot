@@ -1,0 +1,4 @@
+source_id,window_start,window_end,attempts,unique_ports,failure_ratio,score,severity,status,reasons
+host_benign_01,2026-10-19 09:59:40.000,2026-10-19 10:00:40.000,6,3,0.0,0,LOW,NO_ALERT,[]
+host_scanner_01,2026-10-19 09:59:40.800,2026-10-19 10:00:40.800,35,35,0.8,100,HIGH,ALERT,"['Many distinct destination ports', 'High connection-attempt volume', 'High connection-failure ratio']"
+host_slow_probe_01,2026-10-19 10:00:15.000,2026-10-19 10:01:15.000,5,5,1.0,10,LOW,NO_ALERT,['High connection-failure ratio']

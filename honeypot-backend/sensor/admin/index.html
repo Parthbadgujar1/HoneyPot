@@ -1,0 +1,555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Honeypot Operator Console</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #657085;
+    --border: #dde1e8; --accent: #2456d6; --high: #c62828; --medium: #b26a00;
+    --low: #2e7d32; --chip: #eef1f6; --danger: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1419; --panel: #171e26; --text: #e6e9ef; --muted: #8a94a6;
+      --border: #2a3440; --accent: #7aa2ff; --high: #ff6b6b; --medium: #ffb74d;
+      --low: #81c784; --chip: #222b36; --danger: #ff8a80;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1419; --panel: #171e26; --text: #e6e9ef; --muted: #8a94a6;
+    --border: #2a3440; --accent: #7aa2ff; --high: #ff6b6b; --medium: #ffb74d;
+    --low: #81c784; --chip: #222b36; --danger: #ff8a80;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+           justify-content: space-between; padding: 14px 20px;
+           background: var(--panel); border-bottom: 1px solid var(--border); }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  main { padding: 16px 20px 40px; max-width: 1280px; margin: 0 auto; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .muted { color: var(--muted); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+           gap: 12px; margin-bottom: 16px; }
+  .card, .panel { background: var(--panel); border: 1px solid var(--border);
+                  border-radius: 10px; padding: 14px; }
+  .card .value { font-size: 22px; font-weight: 650; }
+  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
+                 letter-spacing: .04em; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab { border: 1px solid var(--border); background: var(--panel); color: var(--text);
+         padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .panel { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
+           vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+  td.reasons { max-width: 420px; font-size: 13px; }
+  code { font: 12px ui-monospace, Consolas, monospace; background: var(--chip);
+         padding: 1px 5px; border-radius: 4px; word-break: break-all; }
+  .sev { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+         font-weight: 650; border: 1px solid currentColor; }
+  .sev.HIGH { color: var(--high); } .sev.MEDIUM { color: var(--medium); }
+  .sev.LOW { color: var(--low); }
+  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--chip);
+          font-size: 12px; }
+  .pill.enforce { background: var(--high); color: #fff; }
+  .pill.dry { background: var(--medium); color: #fff; }
+  button, input, select { font: inherit; color: var(--text); }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 7px;
+           padding: 6px 11px; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
+  button.danger { background: var(--danger); }
+  button:disabled { opacity: .5; cursor: default; }
+  input, select { background: var(--panel); border: 1px solid var(--border);
+                  border-radius: 7px; padding: 6px 9px; }
+  .form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }
+  .form label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+  #notice { position: fixed; right: 16px; bottom: 16px; background: var(--text);
+            color: var(--panel); padding: 10px 14px; border-radius: 8px; display: none;
+            max-width: 420px; }
+  dialog { width: min(760px, 94vw); border: 1px solid var(--border); border-radius: 12px;
+           background: var(--panel); color: var(--text); }
+  dialog::backdrop { background: rgba(0,0,0,.4); }
+  .timeline li { margin-bottom: 10px; list-style: none; border-left: 3px solid var(--accent);
+                 padding-left: 10px; }
+  .timeline ul { padding: 0; margin: 0; }
+  .gate { max-width: 420px; margin: 80px auto; }
+  @media (max-width: 640px) { main { padding: 12px 16px; } th, td { padding: 6px; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Honeypot Operator Console</h1>
+    <div class="muted">Localhost only. Attackers see the decoy URL, not this page.</div>
+  </div>
+  <div class="row">
+    <span id="mode" class="pill">mode: …</span>
+    <span id="lastUpdated" class="muted"></span>
+    <button class="ghost" id="refreshBtn" type="button">Refresh</button>
+    <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <section id="gate" class="gate panel" hidden>
+    <h2>Admin token</h2>
+    <p class="muted">Paste the token from <code>sensor/data/admin_token.txt</code>
+      or the HONEYPOT_ADMIN_TOKEN value.</p>
+    <div class="form">
+      <label style="flex:1">Token <input id="tokenInput" type="password" autocomplete="off" style="width:100%"></label>
+      <button id="signInBtn" type="button">Sign in</button>
+    </div>
+    <div id="gateError" style="color: var(--danger)"></div>
+  </section>
+
+  <section id="app" hidden>
+    <div class="cards">
+      <div class="card"><div class="label">Events</div><div class="value" id="cEvents">0</div></div>
+      <div class="card"><div class="label">Findings</div><div class="value" id="cFindings">0</div></div>
+      <div class="card"><div class="label">High severity</div><div class="value" id="cHigh">0</div></div>
+      <div class="card"><div class="label">Sources</div><div class="value" id="cSources">0</div></div>
+      <div class="card"><div class="label">Active blocks</div><div class="value" id="cBlocks">0</div></div>
+    </div>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="alerts" type="button">Alerts</button>
+      <button class="tab" data-tab="sources" type="button">Attackers</button>
+      <button class="tab" data-tab="events" type="button">Live events</button>
+      <button class="tab" data-tab="blocks" type="button">Blocks</button>
+      <button class="tab" data-tab="intel" type="button">Threat intel</button>
+      <button class="tab" data-tab="decoys" type="button">Decoy actions</button>
+      <button class="tab" data-tab="listeners" type="button">Listeners and models</button>
+    </nav>
+
+    <section class="panel" id="tab-alerts">
+      <div class="row" style="margin-bottom:10px">
+        <select id="sevFilter">
+          <option value="">All severities</option>
+          <option>HIGH</option><option>MEDIUM</option><option>LOW</option>
+        </select>
+      </div>
+      <table><thead><tr>
+        <th>Time</th><th>Source</th><th>Class</th><th>Severity</th><th>Score</th>
+        <th>Why</th><th>Decision</th><th></th>
+      </tr></thead><tbody id="alertRows"></tbody></table>
+    </section>
+
+    <section class="panel" id="tab-sources" hidden>
+      <table><thead><tr>
+        <th>Source IP</th><th>Events</th><th>Ports</th><th>Last seen</th>
+        <th>Top class</th><th>Persona</th><th>Level</th><th>State</th><th></th>
+      </tr></thead><tbody id="sourceRows"></tbody></table>
+    </section>
+
+    <section class="panel" id="tab-events" hidden>
+      <table><thead><tr>
+        <th>Time</th><th>Kind</th><th>Source</th><th>Port</th><th>Service</th><th>Details</th>
+      </tr></thead><tbody id="eventRows"></tbody></table>
+    </section>
+
+    <section id="tab-blocks" hidden>
+      <div class="panel" style="margin-bottom:12px">
+        <h2>Block an IP address</h2>
+        <form class="form" id="blockForm">
+          <label>IP address <input name="ip" required placeholder="203.0.113.7" style="width:180px"></label>
+          <label>Reason <input name="reason" value="manual block" style="width:260px"></label>
+          <label>TTL (minutes, 0 = permanent) <input name="ttl" type="number" min="0" value="1440" style="width:140px"></label>
+          <button type="submit">Block</button>
+        </form>
+        <div class="muted" id="fwInfo"></div>
+      </div>
+      <div class="panel">
+        <table><thead><tr>
+          <th>IP</th><th>Status</th><th>Mode</th><th>Source</th><th>Reason</th><th>Created</th><th>Expires</th><th></th>
+        </tr></thead><tbody id="blockRows"></tbody></table>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-decoys" hidden>
+      <table><thead><tr><th>Time</th><th>Source</th><th>Persona</th><th>Level</th><th>Reason</th></tr></thead>
+      <tbody id="decoyRows"></tbody></table>
+    </section>
+
+    <section id="tab-intel" hidden>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <h2>Campaigns</h2>
+            <div class="muted" id="intelSummary">Sources are linked when they share honeytokens, passwords, user agents, usernames or port sets.</div>
+          </div>
+          <div class="row">
+            <label class="muted">Window
+              <select id="intelDays">
+                <option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option>
+              </select>
+            </label>
+            <button class="ghost" id="exportJson" type="button">Export JSON</button>
+            <button class="ghost" id="exportCsv" type="button">Export CSV</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:12px">
+        <table><thead><tr>
+          <th>Campaign</th><th>Sources</th><th>Why they are linked</th><th>Shared indicators</th><th>Severity</th><th>Seen</th>
+        </tr></thead><tbody id="campaignRows"></tbody></table>
+      </div>
+      <div class="panel">
+        <h2>Indicators (first 200)</h2>
+        <table><thead><tr>
+          <th>Type</th><th>Value</th><th>Sources</th><th>Severity</th><th>Classes</th><th>Last seen</th>
+        </tr></thead><tbody id="indicatorRows"></tbody></table>
+      </div>
+    </section>
+
+    <section class="panel" id="tab-listeners" hidden>
+      <h2>Decoy listeners</h2>
+      <table><thead><tr><th>Name</th><th>Port</th><th>State</th><th>Detail</th></tr></thead>
+      <tbody id="listenerRows"></tbody></table>
+      <h2 style="margin-top:18px">ML models</h2>
+      <div id="mlInfo" class="muted"></div>
+      <h2 style="margin-top:18px">Detection totals</h2>
+      <div id="engineInfo" class="muted"></div>
+    </section>
+  </section>
+</main>
+
+<dialog id="timelineDialog">
+  <div class="row" style="justify-content:space-between">
+    <h2 id="timelineTitle">Timeline</h2>
+    <button class="ghost" id="closeTimeline" type="button">Close</button>
+  </div>
+  <ul class="timeline" id="timelineList"></ul>
+</dialog>
+
+<div id="notice" role="status"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const TOKEN_KEY = "hp-admin-token";
+  let token = sessionStorage.getItem(TOKEN_KEY) || "";
+  let timer = null;
+
+  const esc = (value) => String(value ?? "").replace(/[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
+
+  function notify(message) {
+    const box = $("notice");
+    box.textContent = message;
+    box.style.display = "block";
+    clearTimeout(box._timer);
+    box._timer = setTimeout(() => (box.style.display = "none"), 4000);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      headers: { Authorization: "Bearer " + token,
+                 "Content-Type": "application/json", ...(options.headers || {}) },
+    });
+    if (response.status === 401) {
+      signOut("Token rejected. Sign in again.");
+      throw new Error("unauthorized");
+    }
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.detail || ("HTTP " + response.status));
+    return body;
+  }
+
+  function signOut(message) {
+    token = "";
+    sessionStorage.removeItem(TOKEN_KEY);
+    clearInterval(timer);
+    $("app").hidden = true;
+    $("gate").hidden = false;
+    $("gateError").textContent = message || "";
+  }
+
+  function signIn() {
+    token = $("tokenInput").value.trim();
+    if (!token) return;
+    sessionStorage.setItem(TOKEN_KEY, token);
+    $("tokenInput").value = "";
+    $("gate").hidden = true;
+    $("app").hidden = false;
+    refreshAll();
+    clearInterval(timer);
+    timer = setInterval(refreshAll, 10000);
+  }
+
+  function sevChip(severity) {
+    return `<span class="sev ${esc(severity)}">${esc(severity)}</span>`;
+  }
+
+  function summarize(detail) {
+    const bits = Object.entries(detail || {})
+      .filter(([k]) => !["raw", "ml", "chunk_sizes", "payload_preview", "honeytoken_hits"].includes(k))
+      .map(([k, v]) => `${esc(k)}=${esc(typeof v === "object" ? JSON.stringify(v) : v)}`);
+    return bits.slice(0, 6).join(" · ");
+  }
+
+  async function refreshAll() {
+    try {
+      const [status, findings, sources, events, blocks, decoys] = await Promise.all([
+        api("/api/status"),
+        api("/api/findings?limit=100" + (($("sevFilter").value) ? "&severity=" + $("sevFilter").value : "")),
+        api("/api/sources"),
+        api("/api/events?limit=150"),
+        api("/api/blocks"),
+        api("/api/decoy-actions?limit=100"),
+      ]);
+      renderStatus(status, blocks);
+      renderAlerts(findings.findings);
+      renderSources(sources.sources);
+      renderEvents(events.events);
+      renderBlocks(blocks);
+      renderDecoys(decoys.actions);
+      if (!$("tab-intel").hidden) await loadIntel();
+      $("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString();
+    } catch (error) {
+      if (error.message !== "unauthorized") notify("Refresh failed: " + error.message);
+    }
+  }
+
+  function renderStatus(status, blocks) {
+    const enforce = status.firewall.enforce;
+    $("mode").textContent = enforce ? "mode: ENFORCE (blocks applied)" : "mode: DRY RUN (blocks logged only)";
+    $("mode").className = "pill " + (enforce ? "enforce" : "dry");
+    $("cEvents").textContent = status.engine.events;
+    $("cFindings").textContent = status.engine.findings;
+    $("cBlocks").textContent = blocks.active.length;
+    $("fwInfo").textContent =
+      `Elevated: ${status.firewall.elevated ? "yes" : "no"} · TTL ${status.firewall.ttl_minutes} min · ` +
+      `Auto-block at score ${status.firewall.block_min_score}+ for ${status.firewall.block_classes.join(", ")}`;
+
+    const listeners = status.listeners;
+    $("listenerRows").innerHTML = listeners.map((l) => `
+      <tr><td>${esc(l.name)}</td><td>${esc(l.port)}</td><td>${esc(l.state)}</td>
+      <td class="muted">${esc(l.error || l.detail || "")}</td></tr>`).join("");
+    $("mlInfo").innerHTML = `CIC PortScan model: ${status.models.cic_loaded ? "loaded" : "not loaded"}` +
+      ` · UNSW recon model: ${status.models.unsw_loaded ? "loaded" : "not loaded"}` +
+      (Object.keys(status.models.errors || {}).length ? ` · errors: ${esc(JSON.stringify(status.models.errors))}` : "");
+    $("engineInfo").textContent =
+      `Events ${status.engine.events} · findings ${status.engine.findings} · errors ${status.engine.errors} · ` +
+      `sources tracked ${status.engine.tracked_sources}`;
+  }
+
+  function renderAlerts(rows) {
+    $("alertRows").innerHTML = rows.map((f) => `
+      <tr>
+        <td>${fmt(f.time)}</td>
+        <td><code>${esc(f.src_ip)}</code></td>
+        <td>${esc(f.classification)}</td>
+        <td>${sevChip(f.severity)}</td>
+        <td>${esc(f.score)} <span class="muted">(rules ${esc(f.rule_points)} + ML ${esc(f.ml_points)})</span></td>
+        <td class="reasons">${f.reasons.map(esc).join("<br>")}</td>
+        <td class="reasons">${esc((f.decision.block || {}).action || "")}
+          ${f.decision.block && f.decision.block.reason ? "<br><span class='muted'>" + esc(f.decision.block.reason) + "</span>" : ""}
+          ${f.decision.decoy && f.decision.decoy.changed ? "<br>decoy → " + esc(f.decision.decoy.persona) : ""}</td>
+        <td><div class="row">
+          <button class="ghost" data-timeline="${esc(f.src_ip)}" type="button">Timeline</button>
+          <button class="danger" data-block="${esc(f.src_ip)}" type="button">Block</button>
+        </div></td>
+      </tr>`).join("") || `<tr><td colspan="8" class="muted">No findings yet. Send some probes to the decoys to see alerts here.</td></tr>`;
+  }
+
+  function renderSources(rows) {
+    $("cSources").textContent = rows.length;
+    $("sourceRows").innerHTML = rows.map((s) => `
+      <tr>
+        <td><code>${esc(s.src_ip)}</code></td>
+        <td>${esc(s.events)}</td>
+        <td>${esc(s.ports_touched)}</td>
+        <td>${fmt(s.last_seen)}</td>
+        <td>${esc(s.top_classification || "—")} ${s.top_severity ? sevChip(s.top_severity) : ""}</td>
+        <td><select data-persona="${esc(s.src_ip)}">
+          ${["ubuntu_web", "windows_server", "legacy_linux"].map((p) =>
+            `<option value="${p}" ${p === s.persona ? "selected" : ""}>${p}</option>`).join("")}
+        </select></td>
+        <td>${esc(s.engagement_level)}</td>
+        <td>${s.blocked ? "<span class='sev HIGH'>BLOCKED</span>" : "open"}</td>
+        <td><div class="row">
+          <button class="ghost" data-timeline="${esc(s.src_ip)}" type="button">Timeline</button>
+          ${s.blocked
+            ? `<button class="ghost" data-unblock="${esc(s.src_ip)}" type="button">Unblock</button>`
+            : `<button class="danger" data-block="${esc(s.src_ip)}" type="button">Block</button>`}
+        </div></td>
+      </tr>`).join("") || `<tr><td colspan="9" class="muted">No attackers recorded yet.</td></tr>`;
+  }
+
+  function renderEvents(rows) {
+    $("eventRows").innerHTML = rows.map((e) => `
+      <tr><td>${fmt(e.time)}</td><td>${esc(e.kind)}</td><td><code>${esc(e.src_ip)}</code></td>
+      <td>${esc(e.dst_port ?? "—")}</td><td>${esc(e.service)}</td>
+      <td class="reasons">${summarize(e.detail)}</td></tr>`).join("") ||
+      `<tr><td colspan="6" class="muted">No events recorded.</td></tr>`;
+  }
+
+  function renderBlocks(blocks) {
+    $("blockRows").innerHTML = blocks.active.concat(blocks.history.filter(
+      (b) => !blocks.active.some((a) => a.id === b.id))).slice(0, 200).map((b) => {
+      const live = ["PENDING", "ACTIVE", "DRY_RUN", "REMOVING"].includes(b.status) && !b.released;
+      return `<tr>
+        <td><code>${esc(b.ip)}</code></td><td>${esc(b.status)}${b.error ? `<div class="muted">${esc(b.error)}</div>` : ""}</td>
+        <td>${esc(b.mode)}</td><td>${esc(b.source)}</td><td>${esc(b.reason)}</td>
+        <td>${fmt(b.created)}</td><td>${b.expires ? fmt(b.expires) : "permanent"}</td>
+        <td>${live ? `<button class="ghost" data-unblock="${esc(b.ip)}" type="button">Unblock</button>` : ""}</td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="8" class="muted">No blocks yet.</td></tr>`;
+  }
+
+  function renderDecoys(rows) {
+    $("decoyRows").innerHTML = rows.map((d) => `
+      <tr><td>${fmt(d.time)}</td><td><code>${esc(d.src_ip)}</code></td><td>${esc(d.persona)}</td>
+      <td>${esc(d.level)}</td><td class="reasons">${esc(d.reason)}</td></tr>`).join("") ||
+      `<tr><td colspan="5" class="muted">No decoy adaptations yet.</td></tr>`;
+  }
+
+  async function loadIntel() {
+    const days = $("intelDays").value;
+    const [campaigns, indicators] = await Promise.all([
+      api(`/api/intel/campaigns?days=${days}`),
+      api(`/api/intel/indicators?days=${days}&format=json`),
+    ]);
+    $("intelSummary").textContent =
+      `${campaigns.sources} sources in the last ${days} day(s): ${campaigns.campaigns.length} campaign(s), ` +
+      `${campaigns.unclustered_sources.length} unlinked. Generated ${fmt(campaigns.generated)}.`;
+    $("campaignRows").innerHTML = campaigns.campaigns.map((c) => `
+      <tr>
+        <td><strong>${esc(c.id)}</strong><div class="muted">${c.size} source(s)</div></td>
+        <td>${c.members.map((ip) => `<code>${esc(ip)}</code>`).join("<br>")}</td>
+        <td class="reasons">${c.reasons.map((r) => `${esc(r.reason)} <span class="muted">(${esc(r.links)})</span>`).join("<br>")}</td>
+        <td class="reasons">${c.usernames.length} usernames, ${c.password_hash_count} password hashes,
+          ${c.honeytoken_count} honeytokens, ports ${c.ports.map(esc).join(", ") || "—"}</td>
+        <td>${c.max_severity ? sevChip(c.max_severity) : "—"}</td>
+        <td>${fmt(c.first_seen)}<br><span class="muted">to ${fmt(c.last_seen)}</span></td>
+      </tr>`).join("") || `<tr><td colspan="6" class="muted">No campaigns yet. Two or more sources must share behaviour to be linked.</td></tr>`;
+    $("indicatorRows").innerHTML = indicators.indicators.slice(0, 200).map((i) => `
+      <tr>
+        <td>${esc(i.type)}</td>
+        <td class="reasons"><code>${esc(i.value)}</code></td>
+        <td>${esc(i.sources)}</td>
+        <td>${i.max_severity ? sevChip(i.max_severity) : "—"}</td>
+        <td>${i.classes.map(esc).join(", ") || "—"}</td>
+        <td>${fmt(i.last_seen)}</td>
+      </tr>`).join("") || `<tr><td colspan="6" class="muted">No indicators in this window.</td></tr>`;
+  }
+
+  async function downloadIntel(format) {
+    const days = $("intelDays").value;
+    const response = await fetch(`/api/intel/indicators?days=${days}&format=${format}`, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    if (!response.ok) throw new Error("export failed: HTTP " + response.status);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `honeypot-indicators-${days}d.${format}`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notify(`Exported indicators as ${format.toUpperCase()}`);
+  }
+
+  async function blockIp(ip, reason = "blocked from operator console", ttl = null) {
+    if (!confirm(`Block ${ip}? ${$("mode").textContent.includes("ENFORCE") ? "The firewall rule will be applied." : "Dry-run mode: only logged."}`)) return;
+    try {
+      const body = { ip, reason };
+      if (ttl !== null) body.ttl_minutes = ttl;
+      await api("/api/blocks", { method: "POST", body: JSON.stringify(body) });
+      notify(`Block recorded for ${ip}`);
+      refreshAll();
+    } catch (error) { notify("Block refused: " + error.message); }
+  }
+
+  async function unblockIp(ip) {
+    try {
+      await api(`/api/blocks/${encodeURIComponent(ip)}`, { method: "DELETE" });
+      notify(`Unblock requested for ${ip}`);
+      refreshAll();
+    } catch (error) { notify("Unblock failed: " + error.message); }
+  }
+
+  async function showTimeline(ip) {
+    const data = await api(`/api/timeline/${encodeURIComponent(ip)}?limit=200`);
+    $("timelineTitle").textContent = "Timeline for " + ip;
+    $("timelineList").innerHTML = data.timeline.map((entry) => {
+      const d = entry.data;
+      let text;
+      if (entry.type === "event") text = `${d.kind} ${d.dst_port ?? ""} ${summarize(d.detail)}`;
+      else if (entry.type === "finding") text = `${d.classification} (${d.severity}, score ${d.score}): ${d.reasons.join("; ")}`;
+      else if (entry.type === "decoy") text = `persona ${d.persona}, level ${d.level}: ${d.reason}`;
+      else text = `block ${d.status} (${d.source}): ${d.reason}`;
+      return `<li><strong>${fmt(entry.time)}</strong> <span class="pill">${esc(entry.type)}</span><br>${esc(text)}</li>`;
+    }).join("") || "<li class='muted'>Nothing recorded for this IP yet.</li>";
+    $("timelineDialog").showModal();
+  }
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (button && button.dataset.tab !== undefined) return;
+    if (!button) return;
+    const { block, unblock, timeline } = button.dataset;
+    if (block) blockIp(block);
+    else if (unblock) unblockIp(unblock);
+    else if (timeline) showTimeline(timeline).catch((e) => notify(e.message));
+  });
+
+  document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
+    if (tab.dataset.tab === "intel") loadIntel().catch((e) => notify(e.message));
+    ["alerts", "sources", "events", "blocks", "intel", "decoys", "listeners"].forEach((name) => {
+      $("tab-" + name).hidden = name !== tab.dataset.tab;
+    });
+  }));
+
+  document.addEventListener("change", async (event) => {
+    const select = event.target.closest("select[data-persona]");
+    if (!select) return;
+    const ip = select.dataset.persona;
+    try {
+      await api(`/api/decoy/${encodeURIComponent(ip)}`, {
+        method: "POST",
+        body: JSON.stringify({ persona: select.value, level: 2, reason: "changed in operator console" }),
+      });
+      notify(`Persona for ${ip} set to ${select.value}`);
+      refreshAll();
+    } catch (error) { notify("Could not change persona: " + error.message); }
+  });
+
+  $("blockForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    blockIp(String(form.get("ip")).trim(), String(form.get("reason")), Number(form.get("ttl")));
+  });
+
+  $("sevFilter").addEventListener("change", refreshAll);
+  $("intelDays").addEventListener("change", () => loadIntel().catch((e) => notify(e.message)));
+  $("exportJson").addEventListener("click", () => downloadIntel("json").catch((e) => notify(e.message)));
+  $("exportCsv").addEventListener("click", () => downloadIntel("csv").catch((e) => notify(e.message)));
+  $("refreshBtn").addEventListener("click", refreshAll);
+  $("logoutBtn").addEventListener("click", () => signOut(""));
+  $("signInBtn").addEventListener("click", signIn);
+  $("tokenInput").addEventListener("keydown", (e) => { if (e.key === "Enter") signIn(); });
+  $("closeTimeline").addEventListener("click", () => $("timelineDialog").close());
+
+  if (token) {
+    $("app").hidden = false;
+    refreshAll();
+    timer = setInterval(refreshAll, 10000);
+  } else {
+    $("gate").hidden = false;
+  }
+})();
+</script>
+</body>
+</html>

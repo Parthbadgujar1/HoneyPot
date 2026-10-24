@@ -1,0 +1,87 @@
+{
+  "_comment": "Default sensor configuration. Override with HONEYPOT_SENSOR_CONFIG=<path to json>. Paths under data/ are relative to honeypot-backend/sensor; model paths are relative to the HoneyPot project root.",
+
+  "db_path": "data/sensor.sqlite3",
+  "log_level": "INFO",
+
+  "decoys": {
+    "bind_host": "0.0.0.0",
+    "ssh": {
+      "enabled": true,
+      "port": 2222,
+      "host_key_file": "data/ssh_host_key",
+      "max_auth_attempts": 6,
+      "session_timeout_s": 60
+    },
+    "http": {
+      "enabled": true,
+      "port": 8080
+    },
+    "bait": {
+      "enabled": true,
+      "read_timeout_s": 5,
+      "max_bytes": 4096,
+      "max_concurrent": 200,
+      "services": {
+        "21": "ftp",
+        "23": "telnet",
+        "25": "smtp",
+        "110": "pop3",
+        "1433": "mssql",
+        "3306": "mysql",
+        "6379": "redis",
+        "9200": "elasticsearch",
+        "27017": "mongodb"
+      }
+    }
+  },
+
+  "admin": {
+    "enabled": true,
+    "host": "127.0.0.1",
+    "port": 9100,
+    "token_file": "data/admin_token.txt"
+  },
+
+  "detection": {
+    "window_s": 60,
+    "history_s": 900,
+    "scan_min_ports": 4,
+    "service_discovery_min_ports": 3,
+    "banner_min_silent": 3,
+    "icmp_min_echo": 3,
+    "http_probe_min_paths": 5,
+    "http_suspicious_min": 2,
+    "ssh_bruteforce_min_attempts": 5,
+    "finding_cooldown_s": 120,
+    "severity_medium_score": 45,
+    "severity_high_score": 75
+  },
+
+  "ml": {
+    "enabled": true,
+    "cic_model": "cicids2017_portscan_model.joblib",
+    "cic_schema": "cicids2017_feature_schema.json",
+    "unsw_model": "reconnaissance_model (1).joblib",
+    "unsw_schema": "feature_schema (1).json",
+    "cic_weight": 30,
+    "unsw_weight": 10
+  },
+
+  "firewall_log": {
+    "enabled": false,
+    "path": "C:/Windows/System32/LogFiles/Firewall/pfirewall.log",
+    "poll_interval_s": 2
+  },
+
+  "response": {
+    "block_enabled": true,
+    "enforce": true,
+    "block_min_score": 75,
+    "block_classes": ["PORT_SCAN", "SSH_BRUTE_FORCE", "HTTP_ENDPOINT_PROBING", "HONEYTOKEN_REUSE", "HOST_DISCOVERY"],
+    "block_ttl_minutes": 1440,
+    "max_active_blocks": 200,
+    "rule_prefix": "HP-BLOCK",
+    "allowlist": ["127.0.0.0/8", "::1/128"]
+  }
+}
