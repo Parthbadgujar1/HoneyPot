@@ -5,242 +5,405 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Honeypot Operator Console</title>
 <style>
+  /* Same palette and layout as the monitoring dashboard (honeypot-frontend). */
   :root {
-    --bg: #f5f6f8; --panel: #ffffff; --text: #1d2330; --muted: #657085;
-    --border: #dde1e8; --accent: #2456d6; --high: #c62828; --medium: #b26a00;
-    --low: #2e7d32; --chip: #eef1f6; --danger: #b3261e;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0f1419; --panel: #171e26; --text: #e6e9ef; --muted: #8a94a6;
-      --border: #2a3440; --accent: #7aa2ff; --high: #ff6b6b; --medium: #ffb74d;
-      --low: #81c784; --chip: #222b36; --danger: #ff8a80;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #0f1419; --panel: #171e26; --text: #e6e9ef; --muted: #8a94a6;
-    --border: #2a3440; --accent: #7aa2ff; --high: #ff6b6b; --medium: #ffb74d;
-    --low: #81c784; --chip: #222b36; --danger: #ff8a80;
+    font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: dark;
+    --bg: #09111f; --panel: #111c2c; --panel-raised: #142236; --border: #253348;
+    --muted: #8d9db2; --text: #e5edf8; --blue: #59a9ff; --green: #55c9a7;
+    --red: #fb647c; --amber: #f4b860; --side: #0c1625; --chip: #1a2a40;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text);
-         font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-           justify-content: space-between; padding: 14px 20px;
-           background: var(--panel); border-bottom: 1px solid var(--border); }
-  h1 { font-size: 18px; margin: 0; }
-  h2 { font-size: 15px; margin: 0 0 10px; }
-  main { padding: 16px 20px 40px; max-width: 1280px; margin: 0 auto; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text);
+         font-size: 14px; line-height: 1.45; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  /* Sidebar */
+  .sidebar { width: 240px; height: 100vh; position: fixed; inset: 0 auto 0 0; display: flex;
+             flex-direction: column; padding: 24px 16px 16px; background: var(--side);
+             border-right: 1px solid #1e2b3e; z-index: 5; overflow-y: auto; }
+  .brand { display: flex; align-items: center; gap: 12px; padding: 0 8px 28px; }
+  .brand-icon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+                background: rgba(89,169,255,.14); color: var(--blue); }
+  .brand-name { font-family: "Space Grotesk", system-ui, sans-serif; font-weight: 700; letter-spacing: .08em; }
+  .brand-name span { color: var(--blue); }
+  .brand-caption { font-size: 10px; letter-spacing: .14em; color: var(--muted); margin-top: 2px; }
+  .nav-label { font-size: 11px; letter-spacing: .12em; color: var(--muted); padding: 0 10px 8px; }
+  .nav-list { display: grid; gap: 4px; }
+  .nav-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 11px 12px; border: 0;
+              border-radius: 10px; background: transparent; color: #b8c6da; text-align: left; }
+  .nav-item:hover { background: #132134; }
+  .nav-item.active { background: var(--blue); color: #061425; font-weight: 600; }
+  .nav-count { margin-left: auto; min-width: 22px; padding: 1px 7px; border-radius: 999px;
+               background: var(--red); color: #fff; font-size: 12px; text-align: center; }
+  .sidebar-spacer { flex: 1; }
+  .sidebar-status { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 12px;
+                    background: var(--panel); border: 1px solid var(--border); margin-bottom: 12px; }
+  .sidebar-status strong { display: block; font-size: 13px; }
+  .sidebar-status p { margin: 0; font-size: 12px; color: var(--muted); }
+  .sidebar-footer { font-size: 11px; color: var(--muted); letter-spacing: .08em; padding: 0 8px; }
+
+  /* Main */
+  .main { margin-left: 240px; min-height: 100vh; }
+  .topbar { display: flex; align-items: center; gap: 14px; justify-content: space-between; flex-wrap: wrap;
+            padding: 18px 28px; border-bottom: 1px solid var(--border); background: rgba(9,17,31,.9);
+            position: sticky; top: 0; z-index: 4; }
+  .crumb { font-size: 11px; letter-spacing: .12em; color: var(--muted); }
+  .page { padding: 24px 28px 40px; max-width: 1400px; }
+  .section-title { display: flex; justify-content: space-between; align-items: end; gap: 12px; flex-wrap: wrap;
+                   margin-bottom: 18px; }
+  .section-title h1 { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 26px; margin: 0 0 4px; }
+  .section-title p { margin: 0; color: var(--muted); }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
   .muted { color: var(--muted); }
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-           gap: 12px; margin-bottom: 16px; }
-  .card, .panel { background: var(--panel); border: 1px solid var(--border);
-                  border-radius: 10px; padding: 14px; }
-  .card .value { font-size: 22px; font-weight: 650; }
-  .card .label { color: var(--muted); font-size: 12px; text-transform: uppercase;
-                 letter-spacing: .04em; }
-  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-  .tab { border: 1px solid var(--border); background: var(--panel); color: var(--text);
-         padding: 7px 12px; border-radius: 999px; cursor: pointer; }
-  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .panel { overflow-x: auto; }
+  .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); display: inline-block; }
+  .status-dot.online { background: var(--green); }
+  .status-dot.offline { background: var(--red); }
+
+  /* Buttons and inputs */
+  .button { background: var(--panel-raised); border: 1px solid var(--border); border-radius: 9px;
+            padding: 8px 13px; color: var(--text); }
+  .button:hover { border-color: #3a4d68; }
+  .button.primary { background: var(--blue); border-color: var(--blue); color: #061425; font-weight: 600; }
+  .button.danger { background: rgba(251,100,124,.15); border-color: rgba(251,100,124,.5); color: #ffb3bf; }
+  .button.ghost { background: transparent; }
+  .button:disabled { opacity: .5; cursor: not-allowed; }
+  .search, .select { background: var(--panel); border: 1px solid var(--border); border-radius: 9px;
+                     padding: 8px 11px; color: var(--text); }
+  .search { min-width: 240px; }
+
+  /* Stat cards */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; }
+  .stat-head { display: flex; justify-content: space-between; align-items: center; }
+  .stat-label { color: var(--muted); font-size: 13px; }
+  .stat-value { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 30px; font-weight: 700; margin-top: 10px; }
+  .stat-desc { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .stat-icon { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; }
+  .tone-blue { color: var(--blue); background: rgba(89,169,255,.14); }
+  .tone-green { color: var(--green); background: rgba(85,201,167,.14); }
+  .tone-red { color: var(--red); background: rgba(251,100,124,.14); }
+  .tone-amber { color: var(--amber); background: rgba(244,184,96,.14); }
+
+  /* Panels and charts */
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 18px; }
+  .panel h2 { font-family: "Space Grotesk", system-ui, sans-serif; font-size: 17px; margin: 0 0 4px; }
+  .panel-head { display: flex; justify-content: space-between; gap: 12px; align-items: start; margin-bottom: 14px; flex-wrap: wrap; }
+  .panel-head p { margin: 0; color: var(--muted); font-size: 13px; }
+  .charts { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+  @media (max-width: 1100px) { .charts { grid-template-columns: 1fr; } }
+  .bars { display: flex; align-items: end; gap: 4px; height: 170px; padding-top: 8px; }
+  .bar { flex: 1; background: linear-gradient(var(--blue), rgba(89,169,255,.35)); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .bar-labels { display: flex; gap: 4px; font-size: 10px; color: var(--muted); margin-top: 6px; }
+  .bar-labels span { flex: 1; text-align: center; overflow: hidden; }
+  .sev-row { display: grid; grid-template-columns: 90px 1fr 40px; gap: 10px; align-items: center; margin: 12px 0; }
+  .sev-track { height: 10px; background: #1a2a40; border-radius: 999px; overflow: hidden; }
+  .sev-fill { height: 100%; border-radius: 999px; }
+  .sev-fill.HIGH { background: var(--red); } .sev-fill.MEDIUM { background: var(--amber); } .sev-fill.LOW { background: var(--green); }
+
+  /* Tables and chips */
+  .table-wrap { overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border);
-           vertical-align: top; }
-  th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-  td.reasons { max-width: 420px; font-size: 13px; }
-  code { font: 12px ui-monospace, Consolas, monospace; background: var(--chip);
-         padding: 1px 5px; border-radius: 4px; word-break: break-all; }
-  .sev { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
-         font-weight: 650; border: 1px solid currentColor; }
-  .sev.HIGH { color: var(--high); } .sev.MEDIUM { color: var(--medium); }
-  .sev.LOW { color: var(--low); }
-  .pill { display: inline-block; padding: 2px 9px; border-radius: 999px; background: var(--chip);
-          font-size: 12px; }
-  .pill.enforce { background: var(--high); color: #fff; }
-  .pill.dry { background: var(--medium); color: #fff; }
-  button, input, select { font: inherit; color: var(--text); }
-  button { background: var(--accent); color: #fff; border: 0; border-radius: 7px;
-           padding: 6px 11px; cursor: pointer; }
-  button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
-  button.danger { background: var(--danger); }
-  button:disabled { opacity: .5; cursor: default; }
-  input, select { background: var(--panel); border: 1px solid var(--border);
-                  border-radius: 7px; padding: 6px 9px; }
-  .form { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 12px; }
-  .form label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
-  #notice { position: fixed; right: 16px; bottom: 16px; background: var(--text);
-            color: var(--panel); padding: 10px 14px; border-radius: 8px; display: none;
-            max-width: 420px; }
-  dialog { width: min(760px, 94vw); border: 1px solid var(--border); border-radius: 12px;
-           background: var(--panel); color: var(--text); }
-  dialog::backdrop { background: rgba(0,0,0,.4); }
-  .timeline li { margin-bottom: 10px; list-style: none; border-left: 3px solid var(--accent);
-                 padding-left: 10px; }
-  .timeline ul { padding: 0; margin: 0; }
-  .gate { max-width: 420px; margin: 80px auto; }
-  @media (max-width: 640px) { main { padding: 12px 16px; } th, td { padding: 6px; } }
+  th, td { text-align: left; padding: 11px 10px; border-bottom: 1px solid #1d2b3f; vertical-align: top; }
+  th { font-size: 11px; letter-spacing: .08em; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover td { background: #132134; }
+  td.wrap { max-width: 420px; font-size: 13px; }
+  code { font: 12px ui-monospace, Consolas, monospace; background: var(--chip); padding: 1px 6px; border-radius: 5px; word-break: break-all; }
+  .chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+  .chip.HIGH { color: var(--red); background: rgba(251,100,124,.14); }
+  .chip.MEDIUM { color: var(--amber); background: rgba(244,184,96,.14); }
+  .chip.LOW { color: var(--green); background: rgba(85,201,167,.14); }
+  .chip.neutral { color: var(--muted); background: var(--chip); }
+  .chip.enforce { color: #fff; background: var(--red); }
+  .chip.dry { color: #061425; background: var(--amber); }
+  .empty { padding: 26px; text-align: center; color: var(--muted); }
+
+  /* Decoy action cards */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--panel-raised); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  .card strong { font-family: "Space Grotesk", system-ui, sans-serif; }
+  .card small { color: var(--muted); display: block; }
+
+  /* Login gate */
+  .gate { max-width: 440px; margin: 90px auto; }
+  .notice { position: fixed; right: 18px; bottom: 18px; background: #e5edf8; color: #09111f; padding: 10px 14px;
+            border-radius: 10px; display: none; max-width: 420px; z-index: 20; }
+  .error { color: var(--red); }
+
+  /* Dialog */
+  dialog { width: min(820px, 94vw); border: 1px solid var(--border); border-radius: 16px; background: var(--panel);
+           color: var(--text); padding: 22px; }
+  dialog::backdrop { background: rgba(3,8,16,.7); }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0; }
+  @media (max-width: 640px) { .detail-grid { grid-template-columns: 1fr; } }
+  .detail-grid > div { background: var(--panel-raised); border-radius: 10px; padding: 12px; }
+  .detail-grid small { color: var(--muted); display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .timeline { list-style: none; padding: 0; margin: 0; }
+  .timeline li { border-left: 3px solid var(--blue); padding: 4px 0 10px 12px; margin-bottom: 6px; }
+  pre { background: #07101c; border: 1px solid var(--border); border-radius: 10px; padding: 12px; overflow: auto;
+        font-size: 12px; max-height: 260px; }
+
+  /* Narrow screens: sidebar becomes a top strip */
+  @media (max-width: 860px) {
+    .sidebar { position: static; width: auto; height: auto; flex-direction: column; }
+    .main { margin-left: 0; }
+    .nav-list { grid-auto-flow: column; overflow-x: auto; }
+    .nav-item { white-space: nowrap; }
+    .page { padding: 16px; }
+  }
 </style>
 </head>
 <body>
-<header>
-  <div>
-    <h1>Honeypot Operator Console</h1>
-    <div class="muted">Localhost only. Attackers see the decoy URL, not this page.</div>
-  </div>
+
+<div id="gate" class="gate panel" hidden>
+  <h2>Operator sign-in</h2>
+  <p class="muted">Paste the admin token from <code>sensor/data/admin_token.txt</code>, or the HONEYPOT_ADMIN_TOKEN value.</p>
   <div class="row">
-    <span id="mode" class="pill">mode: …</span>
-    <span id="lastUpdated" class="muted"></span>
-    <button class="ghost" id="refreshBtn" type="button">Refresh</button>
-    <button class="ghost" id="logoutBtn" type="button">Sign out</button>
+    <input id="tokenInput" class="search" type="password" autocomplete="off" style="flex:1; min-width:200px" placeholder="Admin token">
+    <button class="button primary" id="signInBtn" type="button">Sign in</button>
   </div>
-</header>
+  <p class="error" id="gateError"></p>
+</div>
 
-<main>
-  <section id="gate" class="gate panel" hidden>
-    <h2>Admin token</h2>
-    <p class="muted">Paste the token from <code>sensor/data/admin_token.txt</code>
-      or the HONEYPOT_ADMIN_TOKEN value.</p>
-    <div class="form">
-      <label style="flex:1">Token <input id="tokenInput" type="password" autocomplete="off" style="width:100%"></label>
-      <button id="signInBtn" type="button">Sign in</button>
-    </div>
-    <div id="gateError" style="color: var(--danger)"></div>
-  </section>
-
-  <section id="app" hidden>
-    <div class="cards">
-      <div class="card"><div class="label">Events</div><div class="value" id="cEvents">0</div></div>
-      <div class="card"><div class="label">Findings</div><div class="value" id="cFindings">0</div></div>
-      <div class="card"><div class="label">High severity</div><div class="value" id="cHigh">0</div></div>
-      <div class="card"><div class="label">Sources</div><div class="value" id="cSources">0</div></div>
-      <div class="card"><div class="label">Active blocks</div><div class="value" id="cBlocks">0</div></div>
+<div id="app" hidden>
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      </div>
+      <div>
+        <div class="brand-name">HONEY<span>POT</span></div>
+        <div class="brand-caption">SENSOR CONSOLE</div>
+      </div>
     </div>
 
-    <nav class="tabs" role="tablist">
-      <button class="tab active" data-tab="alerts" type="button">Alerts</button>
-      <button class="tab" data-tab="sources" type="button">Attackers</button>
-      <button class="tab" data-tab="events" type="button">Live events</button>
-      <button class="tab" data-tab="blocks" type="button">Blocks</button>
-      <button class="tab" data-tab="intel" type="button">Threat intel</button>
-      <button class="tab" data-tab="decoys" type="button">Decoy actions</button>
-      <button class="tab" data-tab="listeners" type="button">Listeners and models</button>
+    <div class="nav-label">MONITORING</div>
+    <nav class="nav-list" id="navMonitoring">
+      <button class="nav-item active" data-page="overview" type="button">Overview</button>
+      <button class="nav-item" data-page="events" type="button">Connection Events</button>
+      <button class="nav-item" data-page="alerts" type="button">Threat Alerts <span class="nav-count" id="navAlerts" hidden></span></button>
     </nav>
 
-    <section class="panel" id="tab-alerts">
-      <div class="row" style="margin-bottom:10px">
-        <select id="sevFilter">
-          <option value="">All severities</option>
-          <option>HIGH</option><option>MEDIUM</option><option>LOW</option>
-        </select>
+    <div class="nav-label" style="margin-top:18px">OPERATIONS</div>
+    <nav class="nav-list" id="navOperations">
+      <button class="nav-item" data-page="sources" type="button">Attackers</button>
+      <button class="nav-item" data-page="intel" type="button">Threat Intel</button>
+      <button class="nav-item" data-page="blocks" type="button">Blocks</button>
+      <button class="nav-item" data-page="decoys" type="button">Decoy Actions</button>
+      <button class="nav-item" data-page="system" type="button">Listeners and Models</button>
+    </nav>
+
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-status">
+      <span class="status-dot" id="sideDot"></span>
+      <div>
+        <strong id="sideMode">Deception lab</strong>
+        <p id="sideModeSub">Local monitoring mode</p>
       </div>
-      <table><thead><tr>
-        <th>Time</th><th>Source</th><th>Class</th><th>Severity</th><th>Score</th>
-        <th>Why</th><th>Decision</th><th></th>
-      </tr></thead><tbody id="alertRows"></tbody></table>
-    </section>
+    </div>
+    <div class="sidebar-footer">AI-ADAPTIVE HONEYPOT · 127.0.0.1 ONLY</div>
+  </aside>
 
-    <section class="panel" id="tab-sources" hidden>
-      <table><thead><tr>
-        <th>Source IP</th><th>Events</th><th>Ports</th><th>Last seen</th>
-        <th>Top class</th><th>Persona</th><th>Level</th><th>State</th><th></th>
-      </tr></thead><tbody id="sourceRows"></tbody></table>
-    </section>
-
-    <section class="panel" id="tab-events" hidden>
-      <table><thead><tr>
-        <th>Time</th><th>Kind</th><th>Source</th><th>Port</th><th>Service</th><th>Details</th>
-      </tr></thead><tbody id="eventRows"></tbody></table>
-    </section>
-
-    <section id="tab-blocks" hidden>
-      <div class="panel" style="margin-bottom:12px">
-        <h2>Block an IP address</h2>
-        <form class="form" id="blockForm">
-          <label>IP address <input name="ip" required placeholder="203.0.113.7" style="width:180px"></label>
-          <label>Reason <input name="reason" value="manual block" style="width:260px"></label>
-          <label>TTL (minutes, 0 = permanent) <input name="ttl" type="number" min="0" value="1440" style="width:140px"></label>
-          <button type="submit">Block</button>
-        </form>
-        <div class="muted" id="fwInfo"></div>
+  <main class="main">
+    <header class="topbar">
+      <div>
+        <div class="crumb" id="crumb">MONITORING · OVERVIEW</div>
       </div>
-      <div class="panel">
-        <table><thead><tr>
-          <th>IP</th><th>Status</th><th>Mode</th><th>Source</th><th>Reason</th><th>Created</th><th>Expires</th><th></th>
-        </tr></thead><tbody id="blockRows"></tbody></table>
+      <div class="row">
+        <span class="muted" id="lastUpdated"></span>
+        <button class="button" id="refreshBtn" type="button">Refresh</button>
+        <button class="button ghost" id="logoutBtn" type="button">Sign out</button>
       </div>
-    </section>
+    </header>
 
-    <section class="panel" id="tab-decoys" hidden>
-      <table><thead><tr><th>Time</th><th>Source</th><th>Persona</th><th>Level</th><th>Reason</th></tr></thead>
-      <tbody id="decoyRows"></tbody></table>
-    </section>
+    <div class="page" id="page-overview">
+      <div class="section-title">
+        <div>
+          <h1>Security Overview</h1>
+          <p>Live view of decoy traffic, detections and the responses taken.</p>
+        </div>
+        <button class="button" id="refreshOverview" type="button">Refresh data</button>
+      </div>
 
-    <section id="tab-intel" hidden>
-      <div class="panel" style="margin-bottom:12px">
-        <div class="row" style="justify-content:space-between">
-          <div>
-            <h2>Campaigns</h2>
-            <div class="muted" id="intelSummary">Sources are linked when they share honeytokens, passwords, user agents, usernames or port sets.</div>
-          </div>
-          <div class="row">
-            <label class="muted">Window
-              <select id="intelDays">
-                <option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option>
-              </select>
-            </label>
-            <button class="ghost" id="exportJson" type="button">Export JSON</button>
-            <button class="ghost" id="exportCsv" type="button">Export CSV</button>
-          </div>
+      <div class="stats">
+        <div class="stat"><div class="stat-head"><span class="stat-label">Events recorded</span><span class="stat-icon tone-blue">&#9679;</span></div>
+          <div class="stat-value" id="sEvents">0</div><div class="stat-desc">Latest 500 sensor events</div></div>
+        <div class="stat"><div class="stat-head"><span class="stat-label">Findings</span><span class="stat-icon tone-amber">&#9679;</span></div>
+          <div class="stat-value" id="sFindings">0</div><div class="stat-desc">Detections across all rules</div></div>
+        <div class="stat"><div class="stat-head"><span class="stat-label">High severity</span><span class="stat-icon tone-red">&#9679;</span></div>
+          <div class="stat-value" id="sHigh">0</div><div class="stat-desc">Score 75 and above</div></div>
+        <div class="stat"><div class="stat-head"><span class="stat-label">Active blocks</span><span class="stat-icon tone-green">&#9679;</span></div>
+          <div class="stat-value" id="sBlocks">0</div><div class="stat-desc" id="sBlocksDesc">Firewall mode</div></div>
+      </div>
+
+      <div class="charts">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Connection activity</h2><p>Events per minute, last 30 minutes</p></div></div>
+          <div class="bars" id="activityBars"></div>
+          <div class="bar-labels" id="activityLabels"></div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><h2>Severity mix</h2><p>Findings by severity</p></div></div>
+          <div id="severityBars"></div>
+        </section>
+      </div>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Recent threat alerts</h2><p>Latest findings from the detection engine.</p></div>
+          <button class="button ghost" data-goto="alerts" type="button">View all alerts &rarr;</button>
+        </div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Time</th><th>Source</th><th>Class</th><th>Severity</th><th>Score</th><th>Decision</th>
+        </tr></thead><tbody id="recentAlerts"></tbody></table></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>Adaptive deception actions</h2><p>Persona and engagement changes, with the reason for each.</p></div>
+        </div>
+        <div class="cards" id="recentDecoys"></div>
+      </section>
+    </div>
+
+    <div class="page" id="page-events" hidden>
+      <div class="section-title">
+        <div><h1>Connection Events</h1><p id="eventsSummary">Connections, SSH attempts and HTTP requests received by the decoys.</p></div>
+        <div class="row">
+          <input class="search" id="eventSearch" placeholder="Search IP, port, service, kind">
+          <button class="button" id="exportEvents" type="button">Export CSV</button>
         </div>
       </div>
-      <div class="panel" style="margin-bottom:12px">
-        <table><thead><tr>
-          <th>Campaign</th><th>Sources</th><th>Why they are linked</th><th>Shared indicators</th><th>Severity</th><th>Seen</th>
-        </tr></thead><tbody id="campaignRows"></tbody></table>
-      </div>
-      <div class="panel">
-        <h2>Indicators (first 200)</h2>
-        <table><thead><tr>
-          <th>Type</th><th>Value</th><th>Sources</th><th>Severity</th><th>Classes</th><th>Last seen</th>
-        </tr></thead><tbody id="indicatorRows"></tbody></table>
-      </div>
-    </section>
+      <section class="panel" style="padding:0">
+        <div class="table-wrap"><table><thead><tr>
+          <th>Time</th><th>Kind</th><th>Source</th><th>Port</th><th>Service</th><th>Details</th>
+        </tr></thead><tbody id="eventRows"></tbody></table></div>
+      </section>
+    </div>
 
-    <section class="panel" id="tab-listeners" hidden>
-      <h2>Decoy listeners</h2>
-      <table><thead><tr><th>Name</th><th>Port</th><th>State</th><th>Detail</th></tr></thead>
-      <tbody id="listenerRows"></tbody></table>
-      <h2 style="margin-top:18px">ML models</h2>
-      <div id="mlInfo" class="muted"></div>
-      <h2 style="margin-top:18px">Detection totals</h2>
-      <div id="engineInfo" class="muted"></div>
-    </section>
-  </section>
-</main>
+    <div class="page" id="page-alerts" hidden>
+      <div class="section-title">
+        <div><h1>Threat Alerts</h1><p id="alertsSummary">Click an alert for its score breakdown, evidence and decision.</p></div>
+        <div class="row">
+          <select class="select" id="sevFilter" aria-label="Filter by severity">
+            <option value="">All severities</option><option>HIGH</option><option>MEDIUM</option><option>LOW</option>
+          </select>
+          <input class="search" id="alertSearch" placeholder="Search IP, class, reason">
+          <button class="button" id="exportAlerts" type="button">Export CSV</button>
+        </div>
+      </div>
+      <section class="panel" style="padding:0">
+        <div class="table-wrap"><table><thead><tr>
+          <th>Time</th><th>Source</th><th>Class</th><th>Severity</th><th>Score</th><th>Why</th><th></th>
+        </tr></thead><tbody id="alertRows"></tbody></table></div>
+      </section>
+    </div>
+
+    <div class="page" id="page-sources" hidden>
+      <div class="section-title"><div><h1>Attackers</h1><p>One row per source address. Change persona, block, or open the timeline.</p></div></div>
+      <section class="panel" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>Source IP</th><th>Events</th><th>Ports</th><th>Last seen</th><th>Top class</th><th>Persona</th><th>Level</th><th>State</th><th></th>
+      </tr></thead><tbody id="sourceRows"></tbody></table></div></section>
+    </div>
+
+    <div class="page" id="page-intel" hidden>
+      <div class="section-title">
+        <div><h1>Threat Intel</h1><p id="intelSummary">Sources are linked when they share honeytokens, passwords, user agents, usernames or port sets.</p></div>
+        <div class="row">
+          <select class="select" id="intelDays" aria-label="Window">
+            <option value="1">1 day</option><option value="7" selected>7 days</option><option value="30">30 days</option>
+          </select>
+          <button class="button" id="exportJson" type="button">Export JSON</button>
+          <button class="button" id="exportCsv" type="button">Export CSV</button>
+        </div>
+      </div>
+      <section class="panel" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>Campaign</th><th>Sources</th><th>Why they are linked</th><th>Shared indicators</th><th>Severity</th><th>Seen</th>
+      </tr></thead><tbody id="campaignRows"></tbody></table></div></section>
+      <section class="panel" style="padding:0"><div class="panel-head" style="padding:18px 18px 0"><div><h2>Indicators (first 200)</h2></div></div>
+        <div class="table-wrap"><table><thead><tr>
+          <th>Type</th><th>Value</th><th>Sources</th><th>Severity</th><th>Classes</th><th>Last seen</th>
+        </tr></thead><tbody id="indicatorRows"></tbody></table></div></section>
+    </div>
+
+    <div class="page" id="page-blocks" hidden>
+      <div class="section-title">
+        <div><h1>Blocks</h1><p id="fwInfo"></p></div>
+      </div>
+      <section class="panel">
+        <div class="panel-head"><div><h2>Block an address</h2><p>Protected addresses (this machine, the gateway, the allowlist) are always refused.</p></div></div>
+        <form class="row" id="blockForm">
+          <input class="search" name="ip" required placeholder="IP address" style="min-width:180px">
+          <input class="search" name="reason" value="manual block" style="min-width:220px">
+          <input class="search" name="ttl" type="number" min="0" value="1440" title="TTL in minutes, 0 = permanent" style="min-width:120px">
+          <button class="button danger" type="submit">Block</button>
+        </form>
+      </section>
+      <section class="panel" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>IP</th><th>Status</th><th>Mode</th><th>Source</th><th>Reason</th><th>Created</th><th>Expires</th><th></th>
+      </tr></thead><tbody id="blockRows"></tbody></table></div></section>
+    </div>
+
+    <div class="page" id="page-decoys" hidden>
+      <div class="section-title"><div><h1>Decoy Actions</h1><p>Every persona or engagement change, and why it was made.</p></div></div>
+      <section class="panel" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>Time</th><th>Source</th><th>Persona</th><th>Level</th><th>Reason</th>
+      </tr></thead><tbody id="decoyRows"></tbody></table></div></section>
+    </div>
+
+    <div class="page" id="page-system" hidden>
+      <div class="section-title"><div><h1>Listeners and Models</h1><p>What is listening, what loaded, and detection totals.</p></div></div>
+      <section class="panel" style="padding:0"><div class="table-wrap"><table><thead><tr>
+        <th>Name</th><th>Port</th><th>State</th><th>Detail</th>
+      </tr></thead><tbody id="listenerRows"></tbody></table></div></section>
+      <section class="panel"><h2>ML models</h2><div id="mlInfo" class="muted"></div></section>
+      <section class="panel"><h2>Detection totals</h2><div id="engineInfo" class="muted"></div></section>
+    </div>
+  </main>
+</div>
+
+<dialog id="alertDialog">
+  <div class="row" style="justify-content:space-between">
+    <h2 id="alertTitle" style="margin:0">Alert</h2>
+    <button class="button ghost" id="closeAlert" type="button">Close</button>
+  </div>
+  <div id="alertBody"></div>
+</dialog>
 
 <dialog id="timelineDialog">
   <div class="row" style="justify-content:space-between">
-    <h2 id="timelineTitle">Timeline</h2>
-    <button class="ghost" id="closeTimeline" type="button">Close</button>
+    <h2 id="timelineTitle" style="margin:0">Timeline</h2>
+    <button class="button ghost" id="closeTimeline" type="button">Close</button>
   </div>
   <ul class="timeline" id="timelineList"></ul>
 </dialog>
 
-<div id="notice" role="status"></div>
+<div id="notice" class="notice" role="status"></div>
 
 <script>
 (() => {
   "use strict";
   const $ = (id) => document.getElementById(id);
   const TOKEN_KEY = "hp-admin-token";
+  const PAGES = {
+    overview: "Monitoring · Overview", events: "Monitoring · Connection events",
+    alerts: "Monitoring · Threat alerts", sources: "Operations · Attackers",
+    intel: "Operations · Threat intel", blocks: "Operations · Blocks",
+    decoys: "Operations · Decoy actions", system: "Operations · Listeners and models",
+  };
   let token = sessionStorage.getItem(TOKEN_KEY) || "";
+  let page = "overview";
   let timer = null;
+  let cache = { events: [], alerts: [], status: null };
 
   const esc = (value) => String(value ?? "").replace(/[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const fmt = (iso) => (iso ? new Date(iso).toLocaleString() : "—");
+  const short = (iso) => (iso ? new Date(iso).toLocaleTimeString() : "—");
+  const chip = (severity) => `<span class="chip ${esc(severity)}">${esc(severity)}</span>`;
 
   function notify(message) {
     const box = $("notice");
@@ -253,8 +416,7 @@
   async function api(path, options = {}) {
     const response = await fetch(path, {
       ...options,
-      headers: { Authorization: "Bearer " + token,
-                 "Content-Type": "application/json", ...(options.headers || {}) },
+      headers: { Authorization: "Bearer " + token, "Content-Type": "application/json", ...(options.headers || {}) },
     });
     if (response.status === 401) {
       signOut("Token rejected. Sign in again.");
@@ -263,6 +425,14 @@
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.detail || ("HTTP " + response.status));
     return body;
+  }
+
+  function signIn() {
+    token = $("tokenInput").value.trim();
+    if (!token) return;
+    sessionStorage.setItem(TOKEN_KEY, token);
+    $("tokenInput").value = "";
+    start();
   }
 
   function signOut(message) {
@@ -274,46 +444,42 @@
     $("gateError").textContent = message || "";
   }
 
-  function signIn() {
-    token = $("tokenInput").value.trim();
-    if (!token) return;
-    sessionStorage.setItem(TOKEN_KEY, token);
-    $("tokenInput").value = "";
+  function start() {
     $("gate").hidden = true;
     $("app").hidden = false;
+    showPage(page);
     refreshAll();
     clearInterval(timer);
     timer = setInterval(refreshAll, 10000);
   }
 
-  function sevChip(severity) {
-    return `<span class="sev ${esc(severity)}">${esc(severity)}</span>`;
-  }
-
-  function summarize(detail) {
-    const bits = Object.entries(detail || {})
-      .filter(([k]) => !["raw", "ml", "chunk_sizes", "payload_preview", "honeytoken_hits"].includes(k))
-      .map(([k, v]) => `${esc(k)}=${esc(typeof v === "object" ? JSON.stringify(v) : v)}`);
-    return bits.slice(0, 6).join(" · ");
+  function showPage(name) {
+    page = name;
+    document.querySelectorAll(".page").forEach((p) => (p.hidden = p.id !== "page-" + name));
+    document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("active", b.dataset.page === name));
+    $("crumb").textContent = (PAGES[name] || "").toUpperCase();
+    if (name === "intel") loadIntel().catch((e) => notify(e.message));
   }
 
   async function refreshAll() {
     try {
-      const [status, findings, sources, events, blocks, decoys] = await Promise.all([
+      const [status, findings, events, sources, blocks, decoys] = await Promise.all([
         api("/api/status"),
-        api("/api/findings?limit=100" + (($("sevFilter").value) ? "&severity=" + $("sevFilter").value : "")),
+        api("/api/findings?limit=300"),
+        api("/api/events?limit=500"),
         api("/api/sources"),
-        api("/api/events?limit=150"),
         api("/api/blocks"),
         api("/api/decoy-actions?limit=100"),
       ]);
+      cache = { events: events.events, alerts: findings.findings, status };
       renderStatus(status, blocks);
-      renderAlerts(findings.findings);
+      renderOverview(events.events, findings.findings, blocks, decoys.actions);
+      renderAlerts();
+      renderEvents();
       renderSources(sources.sources);
-      renderEvents(events.events);
       renderBlocks(blocks);
       renderDecoys(decoys.actions);
-      if (!$("tab-intel").hidden) await loadIntel();
+      if (page === "intel") await loadIntel();
       $("lastUpdated").textContent = "Updated " + new Date().toLocaleTimeString();
     } catch (error) {
       if (error.message !== "unauthorized") notify("Refresh failed: " + error.message);
@@ -322,96 +488,157 @@
 
   function renderStatus(status, blocks) {
     const enforce = status.firewall.enforce;
-    $("mode").textContent = enforce ? "mode: ENFORCE (blocks applied)" : "mode: DRY RUN (blocks logged only)";
-    $("mode").className = "pill " + (enforce ? "enforce" : "dry");
-    $("cEvents").textContent = status.engine.events;
-    $("cFindings").textContent = status.engine.findings;
-    $("cBlocks").textContent = blocks.active.length;
+    $("sideMode").textContent = enforce ? "Blocks enforced" : "Dry run";
+    $("sideModeSub").textContent = enforce
+      ? (status.firewall.elevated ? "Firewall rules active" : "Not elevated: blocks will fail")
+      : "Blocks logged only";
+    $("sideDot").className = "status-dot " + (status.firewall.elevated || !enforce ? "online" : "offline");
+    $("sBlocks").textContent = blocks.active.length;
+    $("sBlocksDesc").textContent = enforce ? "Firewall enforcing" : "Dry-run (logged only)";
     $("fwInfo").textContent =
-      `Elevated: ${status.firewall.elevated ? "yes" : "no"} · TTL ${status.firewall.ttl_minutes} min · ` +
-      `Auto-block at score ${status.firewall.block_min_score}+ for ${status.firewall.block_classes.join(", ")}`;
+      `Mode: ${enforce ? "ENFORCE" : "DRY RUN"} · Elevated: ${status.firewall.elevated ? "yes" : "no"} · ` +
+      `TTL ${status.firewall.ttl_minutes} min · Auto-block at score ${status.firewall.block_min_score}+ for ` +
+      status.firewall.block_classes.join(", ");
 
-    const listeners = status.listeners;
-    $("listenerRows").innerHTML = listeners.map((l) => `
-      <tr><td>${esc(l.name)}</td><td>${esc(l.port)}</td><td>${esc(l.state)}</td>
-      <td class="muted">${esc(l.error || l.detail || "")}</td></tr>`).join("");
-    $("mlInfo").innerHTML = `CIC PortScan model: ${status.models.cic_loaded ? "loaded" : "not loaded"}` +
-      ` · UNSW recon model: ${status.models.unsw_loaded ? "loaded" : "not loaded"}` +
+    $("listenerRows").innerHTML = status.listeners.map((l) => `
+      <tr><td>${esc(l.name)}</td><td>${esc(l.port)}</td><td><span class="chip ${l.state === "listening" ? "LOW" : "HIGH"}">${esc(l.state)}</span></td>
+      <td class="muted">${esc(l.error || l.detail || "")}</td></tr>`).join("") || `<tr><td colspan="4" class="empty">No listeners reported.</td></tr>`;
+    $("mlInfo").innerHTML = `CIC PortScan model: ${status.models.cic_loaded ? "loaded" : "not loaded"} · ` +
+      `UNSW recon model: ${status.models.unsw_loaded ? "loaded" : "not loaded"}` +
       (Object.keys(status.models.errors || {}).length ? ` · errors: ${esc(JSON.stringify(status.models.errors))}` : "");
-    $("engineInfo").textContent =
-      `Events ${status.engine.events} · findings ${status.engine.findings} · errors ${status.engine.errors} · ` +
-      `sources tracked ${status.engine.tracked_sources}`;
+    $("engineInfo").textContent = `Events ${status.engine.events} · findings ${status.engine.findings} · ` +
+      `errors ${status.engine.errors} · sources tracked ${status.engine.tracked_sources}`;
+
+    const alerts = $("navAlerts");
+    const high = cache.alerts.filter((a) => a.severity === "HIGH").length;
+    alerts.hidden = high === 0;
+    alerts.textContent = high > 99 ? "99+" : String(high);
   }
 
-  function renderAlerts(rows) {
+  function renderOverview(events, findings, blocks, decoys) {
+    $("sEvents").textContent = events.length.toLocaleString();
+    $("sFindings").textContent = findings.length.toLocaleString();
+    $("sHigh").textContent = findings.filter((f) => f.severity === "HIGH").length.toLocaleString();
+
+    // Connection activity: events per minute over the last 30 minutes.
+    const now = Date.now();
+    const buckets = new Array(30).fill(0);
+    for (const e of events) {
+      const minutesAgo = Math.floor((now - new Date(e.time).getTime()) / 60000);
+      if (minutesAgo >= 0 && minutesAgo < 30) buckets[29 - minutesAgo] += 1;
+    }
+    const peak = Math.max(1, ...buckets);
+    $("activityBars").innerHTML = buckets.map((count) =>
+      `<div class="bar" style="height:${Math.max(2, (count / peak) * 100)}%" title="${count} events"></div>`).join("");
+    $("activityLabels").innerHTML = buckets.map((_, i) =>
+      `<span>${i % 5 === 4 ? new Date(now - (29 - i) * 60000).toTimeString().slice(0, 5) : ""}</span>`).join("");
+
+    // Severity mix.
+    const total = Math.max(1, findings.length);
+    $("severityBars").innerHTML = ["HIGH", "MEDIUM", "LOW"].map((sev) => {
+      const count = findings.filter((f) => f.severity === sev).length;
+      return `<div class="sev-row"><span>${sev}</span><div class="sev-track"><div class="sev-fill ${sev}" style="width:${(count / total) * 100}%"></div></div><span>${count}</span></div>`;
+    }).join("");
+
+    $("recentAlerts").innerHTML = findings.slice(0, 5).map(alertRow).join("") ||
+      `<tr><td colspan="6" class="empty">No findings yet. Send some probes to the decoys to see alerts here.</td></tr>`;
+    $("recentDecoys").innerHTML = decoys.slice(0, 4).map((d) => `
+      <div class="card"><strong>${esc(d.persona)}</strong><small>level ${esc(d.level)} · ${esc(d.src_ip)}</small>
+        <p style="margin:8px 0 0">${esc(d.reason)}</p><small>${fmt(d.time)}</small></div>`).join("") ||
+      `<div class="empty">No adaptations yet.</div>`;
+  }
+
+  function alertRow(f) {
+    const block = (f.decision && f.decision.block) || {};
+    const decision = block.action === "block" ? `block (${block.mode || ""})` : (block.action || "none");
+    return `<tr class="clickable" data-alert="${f.id}">
+      <td>${short(f.time)}</td>
+      <td><code>${esc(f.src_ip)}</code></td>
+      <td>${esc(f.classification)}</td>
+      <td>${chip(f.severity)}</td>
+      <td>${esc(f.score)}</td>
+      <td class="muted">${esc(decision)}</td></tr>`;
+  }
+
+  function renderAlerts() {
+    const severity = $("sevFilter").value;
+    const term = $("alertSearch").value.trim().toLowerCase();
+    const rows = cache.alerts.filter((f) => {
+      if (severity && f.severity !== severity) return false;
+      if (!term) return true;
+      return [f.src_ip, f.classification, f.severity, ...f.reasons].some((v) => String(v).toLowerCase().includes(term));
+    });
+    $("alertsSummary").textContent = `${rows.length} shown of ${cache.alerts.length} findings. Click a row for details.`;
     $("alertRows").innerHTML = rows.map((f) => `
-      <tr>
-        <td>${fmt(f.time)}</td>
-        <td><code>${esc(f.src_ip)}</code></td>
-        <td>${esc(f.classification)}</td>
-        <td>${sevChip(f.severity)}</td>
-        <td>${esc(f.score)} <span class="muted">(rules ${esc(f.rule_points)} + ML ${esc(f.ml_points)})</span></td>
-        <td class="reasons">${f.reasons.map(esc).join("<br>")}</td>
-        <td class="reasons">${esc((f.decision.block || {}).action || "")}
-          ${f.decision.block && f.decision.block.reason ? "<br><span class='muted'>" + esc(f.decision.block.reason) + "</span>" : ""}
-          ${f.decision.decoy && f.decision.decoy.changed ? "<br>decoy → " + esc(f.decision.decoy.persona) : ""}</td>
+      <tr class="clickable" data-alert="${f.id}">
+        <td>${fmt(f.time)}</td><td><code>${esc(f.src_ip)}</code></td><td>${esc(f.classification)}</td>
+        <td>${chip(f.severity)}</td><td>${esc(f.score)} <span class="muted">(rules ${esc(f.rule_points)} + ML ${esc(f.ml_points)})</span></td>
+        <td class="wrap">${f.reasons.map(esc).join("<br>")}</td>
         <td><div class="row">
-          <button class="ghost" data-timeline="${esc(f.src_ip)}" type="button">Timeline</button>
-          <button class="danger" data-block="${esc(f.src_ip)}" type="button">Block</button>
-        </div></td>
-      </tr>`).join("") || `<tr><td colspan="8" class="muted">No findings yet. Send some probes to the decoys to see alerts here.</td></tr>`;
+          <button class="button" data-timeline="${esc(f.src_ip)}" type="button">Timeline</button>
+          <button class="button danger" data-block="${esc(f.src_ip)}" type="button">Block</button>
+        </div></td></tr>`).join("") || `<tr><td colspan="7" class="empty">No alerts match.</td></tr>`;
+  }
+
+  function renderEvents() {
+    const term = $("eventSearch").value.trim().toLowerCase();
+    const rows = cache.events.filter((e) => !term || [e.src_ip, e.dst_port, e.service, e.kind]
+      .some((v) => String(v ?? "").toLowerCase().includes(term)));
+    $("eventsSummary").textContent = `${rows.length} shown of ${cache.events.length} latest events.`;
+    $("eventRows").innerHTML = rows.map((e) => `
+      <tr><td>${fmt(e.time)}</td><td>${esc(e.kind)}</td><td><code>${esc(e.src_ip)}</code></td>
+      <td>${esc(e.dst_port ?? "—")}</td><td>${esc(e.service)}</td><td class="wrap">${summarize(e.detail)}</td></tr>`).join("") ||
+      `<tr><td colspan="6" class="empty">No events match.</td></tr>`;
+  }
+
+  function summarize(detail) {
+    return Object.entries(detail || {})
+      .filter(([k]) => !["raw", "ml", "chunk_sizes", "payload_preview", "honeytoken_hits"].includes(k))
+      .slice(0, 6)
+      .map(([k, v]) => `${esc(k)}=${esc(typeof v === "object" ? JSON.stringify(v) : v)}`)
+      .join(" · ");
   }
 
   function renderSources(rows) {
-    $("cSources").textContent = rows.length;
     $("sourceRows").innerHTML = rows.map((s) => `
       <tr>
-        <td><code>${esc(s.src_ip)}</code></td>
-        <td>${esc(s.events)}</td>
-        <td>${esc(s.ports_touched)}</td>
+        <td><code>${esc(s.src_ip)}</code></td><td>${esc(s.events)}</td><td>${esc(s.ports_touched)}</td>
         <td>${fmt(s.last_seen)}</td>
-        <td>${esc(s.top_classification || "—")} ${s.top_severity ? sevChip(s.top_severity) : ""}</td>
-        <td><select data-persona="${esc(s.src_ip)}">
+        <td>${esc(s.top_classification || "—")} ${s.top_severity ? chip(s.top_severity) : ""}</td>
+        <td><select class="select" data-persona="${esc(s.src_ip)}">
           ${["ubuntu_web", "windows_server", "legacy_linux"].map((p) =>
             `<option value="${p}" ${p === s.persona ? "selected" : ""}>${p}</option>`).join("")}
         </select></td>
         <td>${esc(s.engagement_level)}</td>
-        <td>${s.blocked ? "<span class='sev HIGH'>BLOCKED</span>" : "open"}</td>
+        <td>${s.blocked ? chip("HIGH").replace(">HIGH<", ">BLOCKED<") : "<span class='muted'>open</span>"}</td>
         <td><div class="row">
-          <button class="ghost" data-timeline="${esc(s.src_ip)}" type="button">Timeline</button>
+          <button class="button" data-timeline="${esc(s.src_ip)}" type="button">Timeline</button>
           ${s.blocked
-            ? `<button class="ghost" data-unblock="${esc(s.src_ip)}" type="button">Unblock</button>`
-            : `<button class="danger" data-block="${esc(s.src_ip)}" type="button">Block</button>`}
+            ? `<button class="button" data-unblock="${esc(s.src_ip)}" type="button">Unblock</button>`
+            : `<button class="button danger" data-block="${esc(s.src_ip)}" type="button">Block</button>`}
         </div></td>
-      </tr>`).join("") || `<tr><td colspan="9" class="muted">No attackers recorded yet.</td></tr>`;
-  }
-
-  function renderEvents(rows) {
-    $("eventRows").innerHTML = rows.map((e) => `
-      <tr><td>${fmt(e.time)}</td><td>${esc(e.kind)}</td><td><code>${esc(e.src_ip)}</code></td>
-      <td>${esc(e.dst_port ?? "—")}</td><td>${esc(e.service)}</td>
-      <td class="reasons">${summarize(e.detail)}</td></tr>`).join("") ||
-      `<tr><td colspan="6" class="muted">No events recorded.</td></tr>`;
+      </tr>`).join("") || `<tr><td colspan="9" class="empty">No attackers recorded yet.</td></tr>`;
   }
 
   function renderBlocks(blocks) {
-    $("blockRows").innerHTML = blocks.active.concat(blocks.history.filter(
-      (b) => !blocks.active.some((a) => a.id === b.id))).slice(0, 200).map((b) => {
+    const seen = new Set();
+    const rows = [...blocks.active, ...blocks.history].filter((b) => (seen.has(b.id) ? false : seen.add(b.id)));
+    $("blockRows").innerHTML = rows.slice(0, 200).map((b) => {
       const live = ["PENDING", "ACTIVE", "DRY_RUN", "REMOVING"].includes(b.status) && !b.released;
       return `<tr>
-        <td><code>${esc(b.ip)}</code></td><td>${esc(b.status)}${b.error ? `<div class="muted">${esc(b.error)}</div>` : ""}</td>
-        <td>${esc(b.mode)}</td><td>${esc(b.source)}</td><td>${esc(b.reason)}</td>
+        <td><code>${esc(b.ip)}</code></td>
+        <td>${esc(b.status)}${b.error ? `<div class="muted">${esc(b.error)}</div>` : ""}</td>
+        <td>${esc(b.mode)}</td><td>${esc(b.source)}</td><td class="wrap">${esc(b.reason)}</td>
         <td>${fmt(b.created)}</td><td>${b.expires ? fmt(b.expires) : "permanent"}</td>
-        <td>${live ? `<button class="ghost" data-unblock="${esc(b.ip)}" type="button">Unblock</button>` : ""}</td>
-      </tr>`;
-    }).join("") || `<tr><td colspan="8" class="muted">No blocks yet.</td></tr>`;
+        <td>${live ? `<button class="button" data-unblock="${esc(b.ip)}" type="button">Unblock</button>` : ""}</td></tr>`;
+    }).join("") || `<tr><td colspan="8" class="empty">No blocks yet.</td></tr>`;
   }
 
   function renderDecoys(rows) {
     $("decoyRows").innerHTML = rows.map((d) => `
       <tr><td>${fmt(d.time)}</td><td><code>${esc(d.src_ip)}</code></td><td>${esc(d.persona)}</td>
-      <td>${esc(d.level)}</td><td class="reasons">${esc(d.reason)}</td></tr>`).join("") ||
-      `<tr><td colspan="5" class="muted">No decoy adaptations yet.</td></tr>`;
+      <td>${esc(d.level)}</td><td class="wrap">${esc(d.reason)}</td></tr>`).join("") ||
+      `<tr><td colspan="5" class="empty">No decoy adaptations yet.</td></tr>`;
   }
 
   async function loadIntel() {
@@ -422,46 +649,46 @@
     ]);
     $("intelSummary").textContent =
       `${campaigns.sources} sources in the last ${days} day(s): ${campaigns.campaigns.length} campaign(s), ` +
-      `${campaigns.unclustered_sources.length} unlinked. Generated ${fmt(campaigns.generated)}.`;
+      `${campaigns.unclustered_sources.length} unlinked.`;
     $("campaignRows").innerHTML = campaigns.campaigns.map((c) => `
       <tr>
         <td><strong>${esc(c.id)}</strong><div class="muted">${c.size} source(s)</div></td>
         <td>${c.members.map((ip) => `<code>${esc(ip)}</code>`).join("<br>")}</td>
-        <td class="reasons">${c.reasons.map((r) => `${esc(r.reason)} <span class="muted">(${esc(r.links)})</span>`).join("<br>")}</td>
-        <td class="reasons">${c.usernames.length} usernames, ${c.password_hash_count} password hashes,
+        <td class="wrap">${c.reasons.map((r) => `${esc(r.reason)} <span class="muted">(${esc(r.links)})</span>`).join("<br>")}</td>
+        <td class="wrap">${c.usernames.length} usernames, ${c.password_hash_count} password hashes,
           ${c.honeytoken_count} honeytokens, ports ${c.ports.map(esc).join(", ") || "—"}</td>
-        <td>${c.max_severity ? sevChip(c.max_severity) : "—"}</td>
-        <td>${fmt(c.first_seen)}<br><span class="muted">to ${fmt(c.last_seen)}</span></td>
-      </tr>`).join("") || `<tr><td colspan="6" class="muted">No campaigns yet. Two or more sources must share behaviour to be linked.</td></tr>`;
+        <td>${c.max_severity ? chip(c.max_severity) : "—"}</td>
+        <td>${fmt(c.first_seen)}<br><span class="muted">to ${fmt(c.last_seen)}</span></td></tr>`).join("") ||
+      `<tr><td colspan="6" class="empty">No campaigns yet. Two or more sources must share behaviour to be linked.</td></tr>`;
     $("indicatorRows").innerHTML = indicators.indicators.slice(0, 200).map((i) => `
-      <tr>
-        <td>${esc(i.type)}</td>
-        <td class="reasons"><code>${esc(i.value)}</code></td>
-        <td>${esc(i.sources)}</td>
-        <td>${i.max_severity ? sevChip(i.max_severity) : "—"}</td>
-        <td>${i.classes.map(esc).join(", ") || "—"}</td>
-        <td>${fmt(i.last_seen)}</td>
-      </tr>`).join("") || `<tr><td colspan="6" class="muted">No indicators in this window.</td></tr>`;
+      <tr><td>${esc(i.type)}</td><td class="wrap"><code>${esc(i.value)}</code></td><td>${esc(i.sources)}</td>
+      <td>${i.max_severity ? chip(i.max_severity) : "—"}</td><td>${i.classes.map(esc).join(", ") || "—"}</td>
+      <td>${fmt(i.last_seen)}</td></tr>`).join("") || `<tr><td colspan="6" class="empty">No indicators in this window.</td></tr>`;
   }
 
-  async function downloadIntel(format) {
-    const days = $("intelDays").value;
-    const response = await fetch(`/api/intel/indicators?days=${days}&format=${format}`, {
-      headers: { Authorization: "Bearer " + token },
-    });
+  async function downloadCsv(url, filename) {
+    const response = await fetch(url, { headers: { Authorization: "Bearer " + token } });
     if (!response.ok) throw new Error("export failed: HTTP " + response.status);
     const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
-    link.download = `honeypot-indicators-${days}d.${format}`;
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
     link.click();
-    URL.revokeObjectURL(url);
-    notify(`Exported indicators as ${format.toUpperCase()}`);
+    URL.revokeObjectURL(link.href);
+  }
+
+  function exportRows(rows, columns, filename) {
+    const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const text = [columns.join(","), ...rows.map((r) => columns.map((c) => escape(r[c])).join(","))].join("\r\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob(["﻿", text], { type: "text/csv;charset=utf-8" }));
+    link.download = filename;
+    link.click();
   }
 
   async function blockIp(ip, reason = "blocked from operator console", ttl = null) {
-    if (!confirm(`Block ${ip}? ${$("mode").textContent.includes("ENFORCE") ? "The firewall rule will be applied." : "Dry-run mode: only logged."}`)) return;
+    const enforce = cache.status && cache.status.firewall.enforce;
+    if (!confirm(`Block ${ip}? ${enforce ? "A firewall rule will be applied." : "Dry run: only logged."}`)) return;
     try {
       const body = { ip, reason };
       if (ttl !== null) body.ttl_minutes = ttl;
@@ -489,28 +716,60 @@
       else if (entry.type === "finding") text = `${d.classification} (${d.severity}, score ${d.score}): ${d.reasons.join("; ")}`;
       else if (entry.type === "decoy") text = `persona ${d.persona}, level ${d.level}: ${d.reason}`;
       else text = `block ${d.status} (${d.source}): ${d.reason}`;
-      return `<li><strong>${fmt(entry.time)}</strong> <span class="pill">${esc(entry.type)}</span><br>${esc(text)}</li>`;
+      return `<li><strong>${fmt(entry.time)}</strong> <span class="chip neutral">${esc(entry.type)}</span><br>${esc(text)}</li>`;
     }).join("") || "<li class='muted'>Nothing recorded for this IP yet.</li>";
     $("timelineDialog").showModal();
   }
 
-  document.addEventListener("click", (event) => {
-    const button = event.target.closest("button");
-    if (button && button.dataset.tab !== undefined) return;
-    if (!button) return;
-    const { block, unblock, timeline } = button.dataset;
-    if (block) blockIp(block);
-    else if (unblock) unblockIp(unblock);
-    else if (timeline) showTimeline(timeline).catch((e) => notify(e.message));
-  });
+  function showAlert(id) {
+    const f = cache.alerts.find((a) => String(a.id) === String(id));
+    if (!f) return;
+    const block = (f.decision && f.decision.block) || {};
+    const decoy = (f.decision && f.decision.decoy) || {};
+    $("alertTitle").textContent = `${f.classification} · ${f.src_ip}`;
+    $("alertBody").innerHTML = `
+      <div class="row" style="margin:6px 0 12px">${chip(f.severity)}<span class="muted">score ${esc(f.score)} (rules ${esc(f.rule_points)} + ML ${esc(f.ml_points)}) · ${fmt(f.time)}</span></div>
+      <div class="detail-grid">
+        <div><small>Why it fired</small>${f.reasons.map(esc).join("<br>")}</div>
+        <div><small>Techniques</small>${(f.techniques || []).map(esc).join(", ") || "—"}</div>
+        <div><small>Block decision</small>${esc(block.action || "none")} ${block.reason ? "<br><span class='muted'>" + esc(block.reason) + "</span>" : ""}</div>
+        <div><small>Decoy response</small>${esc(decoy.persona || "unchanged")} · level ${esc(decoy.level ?? "—")}
+          ${decoy.reason ? "<br><span class='muted'>" + esc(decoy.reason) + "</span>" : ""}</div>
+      </div>
+      <details open><summary>Evidence</summary><pre>${esc(JSON.stringify(f.evidence, null, 2))}</pre></details>
+      <div class="row" style="margin-top:12px">
+        <button class="button" data-timeline="${esc(f.src_ip)}" type="button">Timeline</button>
+        <button class="button danger" data-block="${esc(f.src_ip)}" type="button">Block ${esc(f.src_ip)}</button>
+      </div>`;
+    $("alertDialog").showModal();
+  }
 
-  document.querySelectorAll(".tab").forEach((tab) => tab.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t === tab));
-    if (tab.dataset.tab === "intel") loadIntel().catch((e) => notify(e.message));
-    ["alerts", "sources", "events", "blocks", "intel", "decoys", "listeners"].forEach((name) => {
-      $("tab-" + name).hidden = name !== tab.dataset.tab;
-    });
-  }));
+  function exportEvents() {
+    exportRows(cache.events, ["time", "kind", "src_ip", "dst_port", "service"], "honeypot-events.csv");
+  }
+  function exportAlerts() {
+    const rows = cache.alerts.map((f) => ({ ...f, reasons: f.reasons.join(" | ") }));
+    exportRows(rows, ["time", "src_ip", "classification", "severity", "score", "reasons"], "honeypot-alerts.csv");
+  }
+
+  // Event delegation for every clickable element.
+  document.addEventListener("click", (event) => {
+    const nav = event.target.closest(".nav-item");
+    if (nav) return showPage(nav.dataset.page);
+    const goto = event.target.closest("[data-goto]");
+    if (goto) return showPage(goto.dataset.goto);
+
+    const button = event.target.closest("button[data-block],button[data-unblock],button[data-timeline]");
+    if (button) {
+      const { block, unblock, timeline } = button.dataset;
+      if (block) blockIp(block);
+      else if (unblock) unblockIp(unblock);
+      else if (timeline) showTimeline(timeline).catch((e) => notify(e.message));
+      return;
+    }
+    const row = event.target.closest("tr[data-alert]");
+    if (row) showAlert(row.dataset.alert);
+  });
 
   document.addEventListener("change", async (event) => {
     const select = event.target.closest("select[data-persona]");
@@ -531,24 +790,26 @@
     const form = new FormData(event.target);
     blockIp(String(form.get("ip")).trim(), String(form.get("reason")), Number(form.get("ttl")));
   });
-
-  $("sevFilter").addEventListener("change", refreshAll);
+  $("sevFilter").addEventListener("change", renderAlerts);
+  $("alertSearch").addEventListener("input", renderAlerts);
+  $("eventSearch").addEventListener("input", renderEvents);
+  $("exportEvents").addEventListener("click", exportEvents);
+  $("exportAlerts").addEventListener("click", exportAlerts);
   $("intelDays").addEventListener("change", () => loadIntel().catch((e) => notify(e.message)));
-  $("exportJson").addEventListener("click", () => downloadIntel("json").catch((e) => notify(e.message)));
-  $("exportCsv").addEventListener("click", () => downloadIntel("csv").catch((e) => notify(e.message)));
+  $("exportJson").addEventListener("click", () => downloadCsv(
+    `/api/intel/indicators?days=${$("intelDays").value}&format=json`, "honeypot-indicators.json").catch((e) => notify(e.message)));
+  $("exportCsv").addEventListener("click", () => downloadCsv(
+    `/api/intel/indicators?days=${$("intelDays").value}&format=csv`, `honeypot-indicators-${$("intelDays").value}d.csv`).catch((e) => notify(e.message)));
   $("refreshBtn").addEventListener("click", refreshAll);
+  $("refreshOverview").addEventListener("click", refreshAll);
   $("logoutBtn").addEventListener("click", () => signOut(""));
   $("signInBtn").addEventListener("click", signIn);
   $("tokenInput").addEventListener("keydown", (e) => { if (e.key === "Enter") signIn(); });
   $("closeTimeline").addEventListener("click", () => $("timelineDialog").close());
+  $("closeAlert").addEventListener("click", () => $("alertDialog").close());
 
-  if (token) {
-    $("app").hidden = false;
-    refreshAll();
-    timer = setInterval(refreshAll, 10000);
-  } else {
-    $("gate").hidden = false;
-  }
+  if (token) start();
+  else $("gate").hidden = false;
 })();
 </script>
 </body>
