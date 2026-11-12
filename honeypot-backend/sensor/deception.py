@@ -94,8 +94,9 @@ _SECRET_ALPHABET = string.ascii_letters + string.digits + "/+"
 
 
 class DecoyPolicy:
-    def __init__(self, store: Store, default_persona: str = DEFAULT_PERSONA):
+    def __init__(self, store: Store, default_persona: str = DEFAULT_PERSONA, bandit=None):
         self._store = store
+        self.bandit = bandit
         self._default = default_persona
         self._lock = threading.Lock()
         # ip -> {"persona", "level", "changed_ts"}; mirrors the decoy_actions table.
@@ -174,14 +175,16 @@ class DecoyPolicy:
 
         target = PERSONA_FOR_CLASS.get(classification)
         if target and current_persona == self._default:
-            persona = target
+            persona = self.bandit.choose(classification) if self.bandit else target
+            how = "learned from engagement feedback" if self.bandit else "chosen by the static policy"
             reasons.append(
-                f"{classification}: serving {PERSONAS[target]['label']} persona "
-                "to keep the attacker engaged with plausible services"
+                f"{classification}: serving {PERSONAS[persona]['label']} persona "
+                f"({how}) to keep the attacker engaged with plausible services"
             )
         elif (classification in SCANNING_CLASSES and prior_findings >= 2
               and now - state["changed_ts"] >= ROTATE_COOLDOWN_S):
-            persona = self._next_persona(current_persona)
+            persona = (self.bandit.choose(classification, exclude=current_persona)
+                       if self.bandit else self._next_persona(current_persona))
             reasons.append(
                 f"{classification} repeated: rotated banners from "
                 f"{PERSONAS[current_persona]['label']} to "
@@ -203,7 +206,14 @@ class DecoyPolicy:
         }
         if changed:
             self._store_state(ip, persona, level, decision["reason"])
+            if self.bandit:
+                self.bandit.started(ip, classification, persona)
         return decision
+
+    def note_interaction(self, ip: str, now: float | None = None) -> None:
+        """Feedback: the attacker kept interacting after a persona was shown."""
+        if self.bandit:
+            self.bandit.interaction(ip, now)
 
     def set_persona(self, ip: str, persona: str, level: int, reason: str) -> None:
         """Operator override. Recorded like any other adaptation."""

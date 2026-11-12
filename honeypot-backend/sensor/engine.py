@@ -35,6 +35,10 @@ from .events import CONNECTION, FW_DROP, HTTP, SSH_AUTH, Event
 from .firewall import BlockManager
 from .ml import ModelBundle
 from .store import Store
+from .mitre import techniques_for
+from .privacy import redact_event
+from .profiler import profile as build_profile
+from .webattacks import classify_request
 
 log = logging.getLogger("sensor.engine")
 
@@ -82,6 +86,7 @@ class DetectionEngine:
     ):
         self.thresholds = config["detection"]
         self.store = store
+        self.redact_secrets = config.get("privacy", {}).get("redact_secrets", True)
         self.models = models
         self.decoys = decoys
         self.blocker = blocker
@@ -123,8 +128,15 @@ class DetectionEngine:
             self._score_flow(event)
         if event.kind in (HTTP, SSH_AUTH):
             self._check_honeytokens(event)
+        if event.kind == HTTP:
+            event.detail["web_attacks"] = classify_request(
+                event.detail.get("path", ""), event.detail.get("query", ""),
+                event.detail.get("body_preview", ""), event.detail.get("user_agent", ""))
+        if self.redact_secrets:
+            redact_event(event)
 
         self.store.insert_event(event)
+        self.decoys.note_interaction(event.src_ip, event.ts)
 
         history = self._history[event.src_ip]
         history.append(event)
@@ -292,6 +304,19 @@ class DetectionEngine:
                 {"paths": sorted(paths)[:50], "sensitive_paths": suspicious[:50]},
             ))
 
+        attacks: dict[str, int] = {}
+        for e in history:
+            if e.kind == HTTP and within(e, 300):
+                for family in e.detail.get("web_attacks", []):
+                    attacks[family] = attacks.get(family, 0) + 1
+        for family, count in sorted(attacks.items()):
+            rules.append(Rule(
+                family,
+                min(85, 60 + 5 * (count - 1)),
+                f"{count} HTTP request(s) matched {family.replace('_', ' ').lower()} signatures within 5 minutes",
+                {"matches": count},
+            ))
+
         auth = [e for e in history if e.kind == SSH_AUTH and within(e, 120)]
         if len(auth) >= t["ssh_bruteforce_min_attempts"]:
             extra = len(auth) - t["ssh_bruteforce_min_attempts"]
@@ -402,7 +427,7 @@ class DetectionEngine:
         if not rules:
             reasons.append("behavioural rules did not trigger; ML-only agreement")
 
-        evidence: dict = {"ml": ml_summary}
+        evidence: dict = {"ml": ml_summary, "profile": build_profile(history)}
         for rule in rules:
             evidence[rule.name] = rule.evidence
 
@@ -416,6 +441,7 @@ class DetectionEngine:
             "ml_points": ml_points,
             "reasons": reasons,
             "techniques": [rule.name for rule in rules],
+            "attack": techniques_for([rule.name for rule in rules] or [classification]),
             "evidence": evidence,
         }
 

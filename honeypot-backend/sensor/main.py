@@ -31,7 +31,8 @@ import uvicorn
 from . import netinfo
 from .admin_app import create_admin_app
 from .config import data_path, load_config, sensor_path
-from .deception import DecoyPolicy
+from .deception import DecoyPolicy, PERSONAS, PERSONA_FOR_CLASS
+from .policy import PersonaBandit
 from .engine import DetectionEngine
 from .events import Event
 from .firewall import BlockManager
@@ -77,7 +78,9 @@ class SensorRuntime:
 
         self.store = Store(data_path(config, "db_path"))
         self.models = ModelBundle(config)
-        self.decoys = DecoyPolicy(self.store)
+        self.bandit = (PersonaBandit(list(PERSONAS), PERSONA_FOR_CLASS)
+                       if config.get("adaptive", {}).get("learn_from_feedback", True) else None)
+        self.decoys = DecoyPolicy(self.store, bandit=self.bandit)
         self.blocker = BlockManager(config, self.store)
         self.engine = DetectionEngine(config, self.store, self.models, self.decoys, self.blocker)
 

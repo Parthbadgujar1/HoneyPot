@@ -20,7 +20,9 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field
 
-from . import intel
+import time
+
+from . import intel, mitre
 from .deception import PERSONAS
 
 if TYPE_CHECKING:
@@ -173,6 +175,17 @@ def create_admin_app(runtime: "SensorRuntime") -> FastAPI:
             "window_days": report["window_days"],
             "indicators": report["indicators"],
         }
+
+    @app.get("/api/intel/stix", dependencies=[auth])
+    def stix(days: int = Query(default=7, ge=1, le=90)) -> dict:
+        now = time.time()
+        findings = runtime.store.findings_since(now - days * 86400)
+        return mitre.stix_bundle(findings, now)
+
+    @app.get("/api/policy", dependencies=[auth])
+    def policy() -> dict:
+        bandit = runtime.bandit
+        return {"learning": bandit is not None, "table": bandit.table() if bandit else []}
 
     @app.get("/api/personas", dependencies=[auth])
     def personas() -> dict:
