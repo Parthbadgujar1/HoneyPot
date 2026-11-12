@@ -1,0 +1,66 @@
+{
+ "events": 389,
+ "events_by_kind": {
+  "connection": 224,
+  "http_request": 117,
+  "ssh_auth": 48
+ },
+ "findings": 29,
+ "findings_by_class_severity": [
+  [
+   "BANNER_ENUMERATION",
+   "LOW",
+   4
+  ],
+  [
+   "HONEYTOKEN_REUSE",
+   "HIGH",
+   4
+  ],
+  [
+   "HTTP_ENDPOINT_PROBING",
+   "HIGH",
+   5
+  ],
+  [
+   "HTTP_ENDPOINT_PROBING",
+   "LOW",
+   2
+  ],
+  [
+   "PORT_SCAN",
+   "HIGH",
+   5
+  ],
+  [
+   "PORT_SCAN",
+   "MEDIUM",
+   5
+  ],
+  [
+   "SERVICE_DISCOVERY",
+   "LOW",
+   1
+  ],
+  [
+   "SSH_BRUTE_FORCE",
+   "HIGH",
+   3
+  ]
+ ],
+ "sources": 2,
+ "decoy_actions": 12,
+ "honeytokens": 4,
+ "blocks": [
+  [
+   "RELEASED",
+   "enforce",
+   "operator",
+   3
+  ]
+ ],
+ "mean_ml_points": 4.620689655172414,
+ "mean_rule_points": 67.48275862068965,
+ "first_utc": "2026-10-24 09:31:51",
+ "last_utc": "2026-10-26 08:18:50"
+}

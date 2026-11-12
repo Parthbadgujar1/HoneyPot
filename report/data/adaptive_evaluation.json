@@ -1,0 +1,120 @@
+{
+ "episodes": 600,
+ "seeds": 20,
+ "p_match": 0.92,
+ "p_other": 0.8,
+ "max_steps": 60,
+ "preferred": {
+  "PORT_SCAN": "windows_server",
+  "SSH_BRUTE_FORCE": "legacy_linux",
+  "HTTP_ENDPOINT_PROBING": "ubuntu_web",
+  "SQL_INJECTION": "windows_server"
+ },
+ "default": "ubuntu_web",
+ "policies": {
+  "static": {
+   "mean_steps": 5.8415,
+   "sd_steps": 0.23852550527494262,
+   "first_50": 5.185,
+   "last_quarter": 5.967333333333333,
+   "curve_per_50": [
+    5.185,
+    5.594,
+    5.695,
+    6.056,
+    5.748,
+    5.775,
+    5.959,
+    5.987,
+    6.197,
+    6.5280000000000005,
+    5.8389999999999995,
+    5.535
+   ],
+   "by_class": {
+    "PORT_SCAN": 4.065975740253354,
+    "SSH_BRUTE_FORCE": 3.998728952243021,
+    "HTTP_ENDPOINT_PROBING": 11.395279262920026,
+    "SQL_INJECTION": 3.9391384528338866
+   }
+  },
+  "rotation": {
+   "mean_steps": 5.2385,
+   "sd_steps": 0.18741657403288065,
+   "first_50": 5.201,
+   "last_quarter": 5.268,
+   "curve_per_50": [
+    5.201,
+    5.396,
+    5.072,
+    5.217,
+    5.132,
+    5.095,
+    5.425,
+    5.094,
+    5.426,
+    5.217,
+    5.114,
+    5.473
+   ],
+   "by_class": {
+    "PORT_SCAN": 5.38783916949273,
+    "SSH_BRUTE_FORCE": 4.437463269478493,
+    "HTTP_ENDPOINT_PROBING": 5.572372117083079,
+    "SQL_INJECTION": 5.570696809659397
+   }
+  },
+  "learning": {
+   "mean_steps": 9.796,
+   "sd_steps": 0.5321302576541865,
+   "first_50": 7.237,
+   "last_quarter": 10.450333333333333,
+   "curve_per_50": [
+    7.237,
+    8.545,
+    9.344,
+    9.769,
+    9.91,
+    10.155,
+    10.226,
+    10.452,
+    10.563,
+    10.324,
+    10.792,
+    10.235
+   ],
+   "by_class": {
+    "PORT_SCAN": 9.837090207072059,
+    "SSH_BRUTE_FORCE": 9.934345997132496,
+    "HTTP_ENDPOINT_PROBING": 9.13865669891788,
+    "SQL_INJECTION": 10.272206934900321
+   }
+  },
+  "oracle": {
+   "mean_steps": 11.40075,
+   "sd_steps": 0.3598342500374303,
+   "first_50": 10.827,
+   "last_quarter": 11.136333333333333,
+   "curve_per_50": [
+    10.827,
+    11.542,
+    11.265,
+    11.738,
+    11.745000000000001,
+    11.618,
+    11.557,
+    12.159,
+    10.949,
+    11.25,
+    11.09,
+    11.068999999999999
+   ],
+   "by_class": {
+    "PORT_SCAN": 11.321774925308494,
+    "SSH_BRUTE_FORCE": 11.373804247271947,
+    "HTTP_ENDPOINT_PROBING": 11.044283187804943,
+    "SQL_INJECTION": 11.906621037210796
+   }
+  }
+ }
+}

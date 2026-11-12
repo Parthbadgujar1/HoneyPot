@@ -1,0 +1,912 @@
+{
+ "priya2023": {
+  "doi": "10.1038/s41598-023-28613-0",
+  "title": "Containerized cloud-based honeypot deception for tracking attackers",
+  "authors": [
+   [
+    "Priya",
+    "V. S. Devi"
+   ],
+   [
+    "Chakkaravarthy",
+    "S. Sibi"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Scientific Reports",
+  "series": "Scientific Reports",
+  "publisher": "Springer Science and Business Media LLC",
+  "volume": "13",
+  "issue": "1",
+  "page": null,
+  "article": "1437",
+  "type": "journal-article"
+ },
+ "lanka2024": {
+  "doi": "10.3390/electronics13132465",
+  "title": "Intelligent Threat Detection—AI-Driven Analysis of Honeypot Data to Counter Cyber Threats",
+  "authors": [
+   [
+    "Lanka",
+    "Phani"
+   ],
+   [
+    "Gupta",
+    "Khushi"
+   ],
+   [
+    "Varol",
+    "Cihan"
+   ]
+  ],
+  "year": 2024,
+  "venue": "Electronics",
+  "series": "Electronics",
+  "publisher": "MDPI AG",
+  "volume": "13",
+  "issue": "13",
+  "page": "2465",
+  "article": null,
+  "type": "journal-article"
+ },
+ "ahmed2024": {
+  "doi": "10.1049/smc2.12084",
+  "title": "Securing smart cities through machine learning: A honeypot‐driven approach to attack detection in Internet of Things ecosystems",
+  "authors": [
+   [
+    "Ahmed",
+    "Yussuf"
+   ],
+   [
+    "Beyioku",
+    "Kehinde"
+   ],
+   [
+    "Yousefi",
+    "Mehdi"
+   ]
+  ],
+  "year": 2024,
+  "venue": "IET Smart Cities",
+  "series": "IET Smart Cities",
+  "publisher": "Institution of Engineering and Technology (IET)",
+  "volume": "6",
+  "issue": "3",
+  "page": "180-198",
+  "article": null,
+  "type": "journal-article"
+ },
+ "alatawi2025": {
+  "doi": "10.3390/sym17050628",
+  "title": "Harnessing AI for Cyber Defense: Honeypot-Driven Intrusion Detection Systems",
+  "authors": [
+   [
+    "Alatawi",
+    "Eman"
+   ],
+   [
+    "Albalawi",
+    "Umar"
+   ]
+  ],
+  "year": 2025,
+  "venue": "Symmetry",
+  "series": "Symmetry",
+  "publisher": "MDPI AG",
+  "volume": "17",
+  "issue": "5",
+  "page": "628",
+  "article": null,
+  "type": "journal-article"
+ },
+ "lim2026": {
+  "doi": "10.1145/3820169",
+  "title": "Enhancing Honeypot-based Cyber Attribution using Hierarchical Clustering",
+  "authors": [
+   [
+    "Lim",
+    "Charles"
+   ],
+   [
+    "Hobert",
+    "Kevin"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Digital Threats: Research and Practice",
+  "series": "Digital Threats: Research and Practice",
+  "publisher": "Association for Computing Machinery (ACM)",
+  "volume": null,
+  "issue": null,
+  "page": null,
+  "article": "3820169",
+  "type": "journal-article"
+ },
+ "xiang2024": {
+  "doi": "10.3390/math12091364",
+  "title": "IPAttributor: Cyber Attacker Attribution with Threat Intelligence-Enriched Intrusion Data",
+  "authors": [
+   [
+    "Xiang",
+    "Xiayu"
+   ],
+   [
+    "Liu",
+    "Hao"
+   ],
+   [
+    "Zeng",
+    "Liyi"
+   ],
+   [
+    "Zhang",
+    "Huan"
+   ],
+   [
+    "Gu",
+    "Zhaoquan"
+   ]
+  ],
+  "year": 2024,
+  "venue": "Mathematics",
+  "series": "Mathematics",
+  "publisher": "MDPI AG",
+  "volume": "12",
+  "issue": "9",
+  "page": "1364",
+  "article": null,
+  "type": "journal-article"
+ },
+ "varnaseri2026": {
+  "doi": "10.1007/s10207-026-01221-5",
+  "title": "Q-Cowrie: An adaptive honeypot to analyse attackers’ behaviour",
+  "authors": [
+   [
+    "Var Naseri",
+    "Maryam"
+   ],
+   [
+    "Welch",
+    "Ian"
+   ],
+   [
+    "Haseeb",
+    "Junaid"
+   ],
+   [
+    "Mansoori",
+    "Masood"
+   ]
+  ],
+  "year": 2026,
+  "venue": "International Journal of Information Security",
+  "series": "International Journal of Information Security",
+  "publisher": "Springer Science and Business Media LLC",
+  "volume": "25",
+  "issue": "2",
+  "page": null,
+  "article": "60",
+  "type": "journal-article"
+ },
+ "zhang2026": {
+  "doi": "10.3390/modelling7010023",
+  "title": "Adaptive Software-Defined Honeypot Strategy Using Stackelberg Game and Deep Reinforcement Learning with DPU Acceleration",
+  "authors": [
+   [
+    "Zhang",
+    "Mingxuan"
+   ],
+   [
+    "Yu",
+    "Yituan"
+   ],
+   [
+    "Li",
+    "Shengkun"
+   ],
+   [
+    "Liu",
+    "Yan"
+   ],
+   [
+    "Zhang",
+    "Yingshuai"
+   ],
+   [
+    "Zhang",
+    "Rui"
+   ],
+   [
+    "Shao",
+    "Sujie"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Modelling",
+  "series": "Modelling",
+  "publisher": "MDPI AG",
+  "volume": "7",
+  "issue": "1",
+  "page": "23",
+  "article": null,
+  "type": "journal-article"
+ },
+ "varadarajan2026": {
+  "doi": "10.37936/ecti-cit.2026202.262099",
+  "title": "Intelligent Honeypot for Web Applications: Leveraging Seq2Seq and Reinforcement Learning",
+  "authors": [
+   [
+    "Varadarajan",
+    "Ananya"
+   ],
+   [
+    "Chandrasekaran",
+    "Ashwin"
+   ],
+   [
+    "Binumohan",
+    "Rachana"
+   ],
+   [
+    "Ravishankar",
+    "Rahul Huliyar"
+   ],
+   [
+    "Sadasivam",
+    "Gokul Kannan"
+   ]
+  ],
+  "year": 2026,
+  "venue": "ECTI Transactions on Computer and Information Technology (ECTI-CIT)",
+  "series": "ECTI Transactions on Computer and Information Technology (ECTI-CIT)",
+  "publisher": "ECTI",
+  "volume": "20",
+  "issue": "2",
+  "page": "207-218",
+  "article": null,
+  "type": "journal-article"
+ },
+ "sladic2024": {
+  "doi": "10.1109/eurospw61312.2024.00054",
+  "title": "LLM in the Shell: Generative Honeypots",
+  "authors": [
+   [
+    "Sladić",
+    "Muris"
+   ],
+   [
+    "Valeros",
+    "Veronica"
+   ],
+   [
+    "Catania",
+    "Carlos"
+   ],
+   [
+    "Garcia",
+    "Sebastian"
+   ]
+  ],
+  "year": 2024,
+  "venue": "2024 IEEE European Symposium on Security and Privacy Workshops (EuroS&amp;amp;PW)",
+  "series": "2024 IEEE European Symposium on Security and Privacy Workshops (EuroS&amp;amp;PW)",
+  "publisher": "IEEE",
+  "volume": null,
+  "issue": null,
+  "page": "430-435",
+  "article": null,
+  "type": "proceedings-article"
+ },
+ "li2026": {
+  "doi": "10.3390/asi9050101",
+  "title": "LLM-SSHH: An LLM-Powered SSH Honeypot Framework via State Snapshot",
+  "authors": [
+   [
+    "Li",
+    "Xiang"
+   ],
+   [
+    "Li",
+    "Nanfang"
+   ],
+   [
+    "Li",
+    "Zongrong"
+   ],
+   [
+    "Yan",
+    "Lijun"
+   ],
+   [
+    "Ma",
+    "Denghui"
+   ],
+   [
+    "Cao",
+    "Haishan"
+   ],
+   [
+    "Wang",
+    "Xu"
+   ],
+   [
+    "Liu",
+    "Yu"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Applied System Innovation",
+  "series": "Applied System Innovation",
+  "publisher": "MDPI AG",
+  "volume": "9",
+  "issue": "5",
+  "page": "101",
+  "article": null,
+  "type": "journal-article"
+ },
+ "magazov2026": {
+  "doi": "10.3390/ai7080287",
+  "title": "Benchmarking LLM Backends for Generative SSH Honeypots: Security, Fidelity, Hallucination, Latency, and Stability",
+  "authors": [
+   [
+    "Magazov",
+    "Raiymbek"
+   ],
+   [
+    "Abeshev",
+    "Kuanysh"
+   ],
+   [
+    "Shamuratov",
+    "Yernar"
+   ],
+   [
+    "Uralova",
+    "Fatima"
+   ],
+   [
+    "Aksholak",
+    "Gulnur"
+   ]
+  ],
+  "year": 2026,
+  "venue": "AI",
+  "series": "AI",
+  "publisher": "MDPI AG",
+  "volume": "7",
+  "issue": "8",
+  "page": "287",
+  "article": null,
+  "type": "journal-article"
+ },
+ "sun2023": {
+  "doi": "10.3390/app13095367",
+  "title": "A Survey on Moving Target Defense: Intelligently Affordable, Optimized and Self-Adaptive",
+  "authors": [
+   [
+    "Sun",
+    "Rongbo"
+   ],
+   [
+    "Zhu",
+    "Yuefei"
+   ],
+   [
+    "Fei",
+    "Jinlong"
+   ],
+   [
+    "Chen",
+    "Xingyu"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Applied Sciences",
+  "series": "Applied Sciences",
+  "publisher": "MDPI AG",
+  "volume": "13",
+  "issue": "9",
+  "page": "5367",
+  "article": null,
+  "type": "journal-article"
+ },
+ "shahin2026": {
+  "doi": "10.3390/s26061748",
+  "title": "Evaluating Synthetic Cyber Deception Strategies Under Uncertainty via Game Theory Approach: Linking Information Leakage and Game Outcomes in Cyber Deception",
+  "authors": [
+   [
+    "Shahin",
+    "Mohammad"
+   ],
+   [
+    "Maghanaki",
+    "Mazdak"
+   ],
+   [
+    "Chen",
+    "Fengshan Frank"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Sensors",
+  "series": "Sensors",
+  "publisher": "MDPI AG",
+  "volume": "26",
+  "issue": "6",
+  "page": "1748",
+  "article": null,
+  "type": "journal-article"
+ },
+ "wang2023": {
+  "doi": "10.3390/sym15030568",
+  "title": "Hybrid Intrusion Detection System Based on Combination of Random Forest and Autoencoder",
+  "authors": [
+   [
+    "Wang",
+    "Chao"
+   ],
+   [
+    "Sun",
+    "Yunxiao"
+   ],
+   [
+    "Wang",
+    "Wenting"
+   ],
+   [
+    "Liu",
+    "Hongri"
+   ],
+   [
+    "Wang",
+    "Bailing"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Symmetry",
+  "series": "Symmetry",
+  "publisher": "MDPI AG",
+  "volume": "15",
+  "issue": "3",
+  "page": "568",
+  "article": null,
+  "type": "journal-article"
+ },
+ "lu2024": {
+  "doi": "10.3390/app14020714",
+  "title": "Research on Intrusion Detection Based on an Enhanced Random Forest Algorithm",
+  "authors": [
+   [
+    "Lu",
+    "Caiwu"
+   ],
+   [
+    "Cao",
+    "Yunxiang"
+   ],
+   [
+    "Wang",
+    "Zebin"
+   ]
+  ],
+  "year": 2024,
+  "venue": "Applied Sciences",
+  "series": "Applied Sciences",
+  "publisher": "MDPI AG",
+  "volume": "14",
+  "issue": "2",
+  "page": "714",
+  "article": null,
+  "type": "journal-article"
+ },
+ "yin2023": {
+  "doi": "10.1186/s40537-023-00694-8",
+  "title": "IGRF-RFE: a hybrid feature selection method for MLP-based network intrusion detection on UNSW-NB15 dataset",
+  "authors": [
+   [
+    "Yin",
+    "Yuhua"
+   ],
+   [
+    "Jang-Jaccard",
+    "Julian"
+   ],
+   [
+    "Xu",
+    "Wen"
+   ],
+   [
+    "Singh",
+    "Amardeep"
+   ],
+   [
+    "Zhu",
+    "Jinting"
+   ],
+   [
+    "Sabrina",
+    "Fariza"
+   ],
+   [
+    "Kwak",
+    "Jin"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Journal of Big Data",
+  "series": "Journal of Big Data",
+  "publisher": "Springer Science and Business Media LLC",
+  "volume": "10",
+  "issue": "1",
+  "page": null,
+  "article": "15",
+  "type": "journal-article"
+ },
+ "more2024": {
+  "doi": "10.3390/a17020064",
+  "title": "Enhanced Intrusion Detection Systems Performance with UNSW-NB15 Data Analysis",
+  "authors": [
+   [
+    "More",
+    "Shweta"
+   ],
+   [
+    "Idrissi",
+    "Moad"
+   ],
+   [
+    "Mahmoud",
+    "Haitham"
+   ],
+   [
+    "Asyhari",
+    "A. Taufiq"
+   ]
+  ],
+  "year": 2024,
+  "venue": "Algorithms",
+  "series": "Algorithms",
+  "publisher": "MDPI AG",
+  "volume": "17",
+  "issue": "2",
+  "page": "64",
+  "article": null,
+  "type": "journal-article"
+ },
+ "nassreddine2025": {
+  "doi": "10.3390/computers14030082",
+  "title": "Ensemble Learning for Network Intrusion Detection Based on Correlation and Embedded Feature Selection Techniques",
+  "authors": [
+   [
+    "Nassreddine",
+    "Ghalia"
+   ],
+   [
+    "Nassereddine",
+    "Mohamad"
+   ],
+   [
+    "Al-Khatib",
+    "Obada"
+   ]
+  ],
+  "year": 2025,
+  "venue": "Computers",
+  "series": "Computers",
+  "publisher": "MDPI AG",
+  "volume": "14",
+  "issue": "3",
+  "page": "82",
+  "article": null,
+  "type": "journal-article"
+ },
+ "alkhater2026": {
+  "doi": "10.3390/computers15050285",
+  "title": "A Rigorous Comparative Study of Supervised Machine Learning Techniques for Network Anomaly Detection: Empirical Insights from the UNSW-NB15 Dataset",
+  "authors": [
+   [
+    "Alkhater",
+    "Nouf"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Computers",
+  "series": "Computers",
+  "publisher": "MDPI AG",
+  "volume": "15",
+  "issue": "5",
+  "page": "285",
+  "article": null,
+  "type": "journal-article"
+ },
+ "alani2023": {
+  "doi": "10.3390/s23115298",
+  "title": "XRecon: An Explainbale IoT Reconnaissance Attack Detection System Based on Ensemble Learning",
+  "authors": [
+   [
+    "Alani",
+    "Mohammed M."
+   ],
+   [
+    "Damiani",
+    "Ernesto"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Sensors",
+  "series": "Sensors",
+  "publisher": "MDPI AG",
+  "volume": "23",
+  "issue": "11",
+  "page": "5298",
+  "article": null,
+  "type": "journal-article"
+ },
+ "almaiah2025": {
+  "doi": "10.63180/jcsra.thestap.2025.4.9",
+  "title": "Leveraging ACO, GA, and GWO for Enhancing Port Scan Attack Detection Using Machine Learning",
+  "authors": [
+   [
+    "King Abdullah the II IT School, The University of Jordan, Amman 11942, Jordan",
+    ""
+   ],
+   [
+    "Almaiah",
+    "Mohammed Amin"
+   ],
+   [
+    "Kadel",
+    "Rajan"
+   ],
+   [
+    "Melbourne Institute of Technology",
+    ""
+   ]
+  ],
+  "year": 2025,
+  "venue": "Journal of Cyber Security and Risk Auditing",
+  "series": "Journal of Cyber Security and Risk Auditing",
+  "publisher": "Smart Technologies Academic Press",
+  "volume": "2025",
+  "issue": "4",
+  "page": "306-326",
+  "article": null,
+  "type": "journal-article"
+ },
+ "lanvin2023": {
+  "doi": "10.1007/978-3-031-31108-6_2",
+  "title": "Errors in the CICIDS2017 Dataset and the Significant Differences in Detection Performances It Makes",
+  "authors": [
+   [
+    "Lanvin",
+    "Maxime"
+   ],
+   [
+    "Gimenez",
+    "Pierre-François"
+   ],
+   [
+    "Han",
+    "Yufei"
+   ],
+   [
+    "Majorczyk",
+    "Frédéric"
+   ],
+   [
+    "Mé",
+    "Ludovic"
+   ],
+   [
+    "Totel",
+    "Éric"
+   ]
+  ],
+  "year": 2023,
+  "venue": "Lecture Notes in Computer Science",
+  "series": "Risks and Security of Internet and Systems",
+  "publisher": "Springer Nature Switzerland",
+  "volume": null,
+  "issue": null,
+  "page": "18-33",
+  "article": null,
+  "type": "book-chapter"
+ },
+ "flood2024": {
+  "doi": "10.1109/eurosp60621.2024.00042",
+  "title": "Bad Design Smells in Benchmark NIDS Datasets",
+  "authors": [
+   [
+    "Flood",
+    "Robert"
+   ],
+   [
+    "Engelen",
+    "Gints"
+   ],
+   [
+    "Aspinall",
+    "David"
+   ],
+   [
+    "Desmet",
+    "Lieven"
+   ]
+  ],
+  "year": 2024,
+  "venue": "2024 IEEE 9th European Symposium on Security and Privacy (EuroS&amp;amp;P)",
+  "series": "2024 IEEE 9th European Symposium on Security and Privacy (EuroS&amp;amp;P)",
+  "publisher": "IEEE",
+  "volume": null,
+  "issue": null,
+  "page": "658-675",
+  "article": null,
+  "type": "proceedings-article"
+ },
+ "elangovan2026": {
+  "doi": "10.3390/fi18040194",
+  "title": "Cross-Dataset Temporal and Semantic Generalization of Intrusion Detection Models for the Future Internet",
+  "authors": [
+   [
+    "Elangovan",
+    "Rajesh"
+   ],
+   [
+    "Parthasarathy",
+    "Durga Devi"
+   ],
+   [
+    "Jawahar",
+    "M."
+   ],
+   [
+    "Kaliyaperumal",
+    "Prabu"
+   ],
+   [
+    "Balusamy",
+    "Balamurugan"
+   ],
+   [
+    "Yogarayan",
+    "Sumendra"
+   ],
+   [
+    "Venkatesan",
+    "Vivek"
+   ]
+  ],
+  "year": 2026,
+  "venue": "Future Internet",
+  "series": "Future Internet",
+  "publisher": "MDPI AG",
+  "volume": "18",
+  "issue": "4",
+  "page": "194",
+  "article": null,
+  "type": "journal-article"
+ },
+ "sharafaldin2018": {
+  "doi": "10.5220/0006639801080116",
+  "title": "Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization",
+  "authors": [
+   [
+    "Sharafaldin",
+    "Iman"
+   ],
+   [
+    "Habibi Lashkari",
+    "Arash"
+   ],
+   [
+    "Ghorbani",
+    "Ali A."
+   ]
+  ],
+  "year": 2018,
+  "venue": "Proceedings of the 4th International Conference on Information Systems Security and Privacy",
+  "series": "Proceedings of the 4th International Conference on Information Systems Security and Privacy",
+  "publisher": "SCITEPRESS - Science and Technology Publications",
+  "volume": null,
+  "issue": null,
+  "page": "108-116",
+  "article": null,
+  "type": "proceedings-article"
+ },
+ "moustafa2015": {
+  "doi": "10.1109/milcis.2015.7348942",
+  "title": "UNSW-NB15: a comprehensive data set for network intrusion detection systems (UNSW-NB15 network data set)",
+  "authors": [
+   [
+    "Moustafa",
+    "Nour"
+   ],
+   [
+    "Slay",
+    "Jill"
+   ]
+  ],
+  "year": 2015,
+  "venue": "2015 Military Communications and Information Systems Conference (MilCIS)",
+  "series": "2015 Military Communications and Information Systems Conference (MilCIS)",
+  "publisher": "IEEE",
+  "volume": null,
+  "issue": null,
+  "page": "1-6",
+  "article": null,
+  "type": "proceedings-article"
+ },
+ "breiman2001": {
+  "doi": "10.1023/a:1010933404324",
+  "title": "Random Forests",
+  "authors": [
+   [
+    "Breiman",
+    "Leo"
+   ]
+  ],
+  "year": 2001,
+  "venue": "Machine Learning",
+  "series": "Machine Learning",
+  "publisher": "Springer Science and Business Media LLC",
+  "volume": "45",
+  "issue": "1",
+  "page": "5-32",
+  "article": null,
+  "type": "journal-article"
+ },
+ "engelen2021": {
+  "doi": "10.1109/spw53761.2021.00009",
+  "title": "Troubleshooting an Intrusion Detection Dataset: the CICIDS2017 Case Study",
+  "authors": [
+   [
+    "Engelen",
+    "Gints"
+   ],
+   [
+    "Rimmer",
+    "Vera"
+   ],
+   [
+    "Joosen",
+    "Wouter"
+   ]
+  ],
+  "year": 2021,
+  "venue": "2021 IEEE Security and Privacy Workshops (SPW)",
+  "series": "2021 IEEE Security and Privacy Workshops (SPW)",
+  "publisher": "IEEE",
+  "volume": null,
+  "issue": null,
+  "page": "7-12",
+  "article": null,
+  "type": "proceedings-article"
+ },
+ "sokol2017": {
+  "doi": "10.1186/s13635-017-0057-4",
+  "title": "Honeypots and honeynets: issues of privacy",
+  "authors": [
+   [
+    "Sokol",
+    "Pavol"
+   ],
+   [
+    "Míšek",
+    "Jakub"
+   ],
+   [
+    "Husák",
+    "Martin"
+   ]
+  ],
+  "year": 2017,
+  "venue": "EURASIP Journal on Information Security",
+  "series": "EURASIP Journal on Information Security",
+  "publisher": "Springer Science and Business Media LLC",
+  "volume": "2017",
+  "issue": "1",
+  "page": null,
+  "article": "4",
+  "type": "journal-article"
+ }
+}
