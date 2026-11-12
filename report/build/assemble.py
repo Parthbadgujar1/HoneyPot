@@ -27,9 +27,12 @@ import blocks_1 as b1  # noqa: E402
 import blocks_2 as b2  # noqa: E402
 import blocks_3 as b3  # noqa: E402
 from docx_lib import RED, ROMAN, Doc, roman_lower, set_font  # noqa: E402
-from facts import (ALL_REF_KEYS, CIC, LIVE, ROOT, SC, ST, UNSW, format_ref, n, pct)  # noqa: E402
+from facts import (ALL_REF_KEYS, CIC, LIVE, ROOT, SC, ST, STB, TESTS_TOTAL, UNSW, format_ref, n, pct)  # noqa: E402
 
 TITLE = "AI-Adaptive Honeypot for Network Deception and Threat Intelligence"
+STUDENTS = [("Parth Badgujar", "AI3305"), ("Srujal Zanwar", "AI3331")]
+GUIDE = "Prof. Y. R. Tayade"
+BY_LINE = " and ".join(f"{name} (Roll No. {roll})" for name, roll in STUDENTS)
 FIG_DIR = ROOT / "report" / "figures"
 SHOT_DIR = ROOT / "report" / "screens_web"
 LOGO_BATU = ROOT / "report" / "assets" / "batu.png"
@@ -81,6 +84,7 @@ def structure_A():
     s += [("h3", "Models with live-measurable features")] + b3.results_live_features
     s += [("h3", "Generalisation to other capture days")] + b3.results_other_days
     s += [("h3", "Detection engine")] + b3.results_scenarios
+    s += [("h3", "Behaviour model trained on sensor telemetry")] + b3.results_behaviour
     s += [("h3", "Adaptive deception")] + b3.results_adaptive
     s += [("h3", "System testing")] + b3.testing
     s += [("h3", "User interface")] + b3.ui_design
@@ -134,6 +138,7 @@ def structure_B():
     s += [("h3", "Models with live-measurable features")] + b3.results_live_features
     s += [("h3", "Generalisation to other capture days")] + b3.results_other_days
     s += [("h3", "Detection engine")] + b3.results_scenarios
+    s += [("h3", "Behaviour model trained on sensor telemetry")] + b3.results_behaviour
     s += [("h3", "Adaptive deception")] + b3.results_adaptive
     s += [("h3", "Run on the development machine")] + b3.results_live
     s += [("h3", "Comparison with the literature")] + b3.comparative
@@ -277,11 +282,11 @@ def cover(doc):
     line(doc, "Submitted in partial fulfillment of the requirements of the degree of Bachelor of Technology in "
               "Artificial Intelligence and Data Science", 14, spacing=1.25, before=4)
     line(doc, "by", 14, before=4)
-    for _ in range(2):
-        line(doc, "Mr. / Ms. ______________________________", 14, True, before=8, red=True)
-        line(doc, "PRN No.: ____________________", 14, True, before=3, red=True)
+    for name, roll in STUDENTS:
+        line(doc, name, 14, True, before=8)
+        line(doc, f"Roll No.: {roll}", 14, True, before=3)
     line(doc, "Under the guidance of", 14, before=10)
-    line(doc, "Prof. ______________________", 14, True, before=2, red=True)
+    line(doc, GUIDE, 14, True, before=2)
     logo(doc, LOGO_CSMSS, 1.0, 8, 4)
     line(doc, "Department of Artificial Intelligence and Data Science", 14, True, before=2)
     line(doc, "CSMSS", 14, True, before=6)
@@ -291,7 +296,7 @@ def cover(doc):
 
 
 def signature_table(doc, guide=True):
-    rows = [["Prof. ____________________", "Dr. S. R. Zanwar"], ["Guide", "HOD"],
+    rows = [[GUIDE, "Dr. S. R. Zanwar"], ["Guide", "HOD"],
             ["Department of Artificial Intelligence and Data Science", "Department of Artificial Intelligence and Data Science"],
             ["CSMSS Chh. Shahu College of Engineering, Kanchanwadi, Chhatrapati Sambhajinagar",
              "CSMSS Chh. Shahu College of Engineering, Kanchanwadi, Chhatrapati Sambhajinagar"]]
@@ -309,8 +314,7 @@ def approval_certificate(doc):
     line(doc, "THESIS APPROVAL CERTIFICATE", 14, True, pb=True, before=6, after=10)
     para = line(doc, "", align=WD_ALIGN_PARAGRAPH.JUSTIFY, spacing=1.5, indent=True, after=8)
     doc.rich(para, f"This is to certify that the research work embodied in this thesis entitled **“{TITLE.upper()}”** "
-                   "has been carried out by Mr./Ms. ____________________ (PRN No. ____________) and Mr./Ms. "
-                   "____________________ (PRN No. ____________), students of CSMSS's Chh. Shahu College of Engineering, "
+                   f"has been carried out by {BY_LINE}, students of CSMSS's Chh. Shahu College of Engineering, "
                    "Chhatrapati Sambhajinagar, and is hereby approved for the award of the degree of Bachelor of Technology in "
                    "Artificial Intelligence and Data Science of Dr. Babasaheb Ambedkar Technological University, Lonere.", 14)
     line(doc, "Date:", 12, align=WD_ALIGN_PARAGRAPH.LEFT, before=6)
@@ -326,8 +330,8 @@ def certificate(doc):
     line(doc, "CERTIFICATE", 14, True, before=6, after=10)
     para = line(doc, "", align=WD_ALIGN_PARAGRAPH.JUSTIFY, spacing=1.35, indent=True, after=6)
     doc.rich(para, f"This is to certify that the research work embodied in this thesis entitled **“{TITLE}”** has been "
-                   "carried out by **Mr./Ms. ____________________ (PRN No. ____________)** and **Mr./Ms. ____________________ "
-                   "(PRN No. ____________)**, studying at CSMSS's Chh. Shahu College of Engineering, Chhatrapati "
+                   f"carried out by **{STUDENTS[0][0]} (Roll No. {STUDENTS[0][1]})** and **{STUDENTS[1][0]} "
+                   f"(Roll No. {STUDENTS[1][1]})**, studying at CSMSS's Chh. Shahu College of Engineering, Chhatrapati "
                    "Sambhajinagar, in partial fulfillment of the requirements for the award of the degree of Bachelor of "
                    "Technology in the **Department of Artificial Intelligence and Data Science** of Dr. Babasaheb Ambedkar "
                    "Technological University, Lonere.", 13)
@@ -341,30 +345,30 @@ def certificate(doc):
 
 
 ACK_B = [
-    "First and foremost, I would like to express my sincere gratitude to Almighty God for His blessings, guidance, and strength "
+    "First and foremost, we would like to express our sincere gratitude to Almighty God for His blessings, guidance, and strength "
     "throughout the completion of this project.",
-    "I am deeply indebted to my project guide, Prof. ____________________, for his/her invaluable guidance, constant "
-    "encouragement, insightful suggestions, and continuous support during the course of this work. His/Her expertise, patience, "
-    "and motivation have been instrumental in the successful completion of this project.",
-    "I take this opportunity to express my heartfelt thanks to Dr. S. R. Zanwar, Head of the Department, Artificial "
+    f"We are deeply indebted to our project guide, {GUIDE}, for invaluable guidance, constant encouragement, insightful "
+    "suggestions, and continuous support during the course of this work. Our guide's expertise, patience, and motivation have "
+    "been instrumental in the successful completion of this project.",
+    "We take this opportunity to express our heartfelt thanks to Dr. S. R. Zanwar, Head of the Department, Artificial "
     "Intelligence and Data Science and, Dr. G. B. Dongre, Principal, CSMSS's Chh. Shahu College of Engineering, Chhatrapati "
     "Sambhajinagar, for providing the necessary facilities, encouragement, and academic environment for carrying out this "
     "project successfully.",
-    "I am also grateful to all the faculty members and staff of the Department of Artificial Intelligence and Data Science "
-    "for their valuable support and cooperation throughout my academic journey.",
-    "I would like to extend my sincere thanks to my family and friends for their unwavering encouragement, moral support, and "
-    "motivation, which helped me overcome challenges and successfully complete this project.",
-    "Finally, I express my gratitude to everyone who directly or indirectly contributed to the successful completion of this work.",
+    "We are also grateful to all the faculty members and staff of the Department of Artificial Intelligence and Data Science "
+    "for their valuable support and cooperation throughout our academic journey.",
+    "We would like to extend our sincere thanks to our families and friends for their unwavering encouragement, moral support, "
+    "and motivation, which helped us overcome challenges and successfully complete this project.",
+    "Finally, we express our gratitude to everyone who directly or indirectly contributed to the successful completion of this work.",
 ]
 ACK_A = [
-    "It gives me great pleasure to submit this Project. This is the only page where I have the opportunity to express my "
-    "emotions and gratitude from the bottom of my heart.",
-    "I express my sincere thanks to my guide **Prof. ____________________** for guiding me at every step in making of this "
-    "Project. He/she motivated me and boosted my confidence, and I must admit that the work would not have been accomplished "
-    "without his guidance and encouragement.",
-    "I am also thankful to project coordinator **Dr. V. S. Karwande** for guiding and encouraging me as and when required.",
-    "I would like to extend my special thanks to Head of the Department **Dr. S. R. Zanwar** and the Principal **Dr. G. B. "
-    "Dongre** for spending their valuable time going through my report and providing many helpful suggestions. Lastly, I would "
+    "It gives us great pleasure to submit this Project. This is the only page where we have the opportunity to express our "
+    "emotions and gratitude from the bottom of our hearts.",
+    f"We express our sincere thanks to our guide **{GUIDE}** for guiding us at every step in the making of this Project. "
+    "Our guide motivated us and boosted our confidence, and we must admit that the work would not have been accomplished "
+    "without that guidance and encouragement.",
+    "We are also thankful to project coordinator **Dr. V. S. Karwande** for guiding and encouraging us as and when required.",
+    "We would like to extend our special thanks to Head of the Department **Dr. S. R. Zanwar** and the Principal **Dr. G. B. "
+    "Dongre** for spending their valuable time going through our report and providing many helpful suggestions. Lastly, we would "
     "like to thank all the staff members of the Artificial Intelligence and Data Science Department without whom the project "
     "report would not have been completed.",
 ]
@@ -375,8 +379,8 @@ def acknowledgement(doc, version):
     for text in (ACK_A if version == "A" else ACK_B):
         para = line(doc, "", align=WD_ALIGN_PARAGRAPH.JUSTIFY, spacing=1.5, indent=True, after=6)
         doc.rich(para, text, 12)
-    line(doc, "Student Name (Roll No. ________)", 12, True, align=WD_ALIGN_PARAGRAPH.RIGHT, before=18, red=True)
-    line(doc, "Student Name (Roll No. ________)", 12, True, align=WD_ALIGN_PARAGRAPH.RIGHT, before=2, red=True)
+    for i, (name, roll) in enumerate(STUDENTS):
+        line(doc, f"{name} (Roll No. {roll})", 12, True, align=WD_ALIGN_PARAGRAPH.RIGHT, before=18 if i == 0 else 2)
     line(doc, "T.Y. (Artificial Intelligence and Data Science)", 12, align=WD_ALIGN_PARAGRAPH.RIGHT, before=2)
 
 
@@ -388,20 +392,24 @@ def abstract(doc):
         "fingerprint. This project developed an AI-adaptive honeypot sensor for network deception and threat intelligence. "
         "The sensor hosts a fake SSH server, a fake web application and nine bait TCP services, converts every interaction into "
         "a common event record, and scores each source with behavioural rules over sliding windows together with two Random "
-        "Forest models trained on CIC-IDS2017 and UNSW-NB15. Thirteen rule classes cover reconnaissance, SSH password guessing, "
-        "honeytoken reuse and web attacks. Findings carry an attacker profile and MITRE ATT&CK techniques, a learning policy "
-        "(UCB1) chooses the decoy persona from the attacker's continued engagement, a guarded block manager acts through Windows "
-        "Defender Firewall, and indicators are exported as STIX 2.1.",
+        "Forest models trained on CIC-IDS2017 and UNSW-NB15, and a behaviour model (Random Forest with an Isolation Forest) "
+        "trained on the sensor's own event format. Thirteen rule classes cover reconnaissance, SSH password guessing, "
+        "honeytoken reuse and web attacks. Findings carry an attacker profile and MITRE ATT&CK techniques; a learning policy "
+        "(UCB1), steered by the profile, chooses the decoy persona from the attacker's continued engagement; a guarded block "
+        "manager acts through Windows Defender Firewall or Linux iptables, optionally after operator approval; and indicators "
+        "are exported as STIX 2.1.",
         f"The Random Forests were re-evaluated with de-duplicated, leakage-controlled splits and reached F1-scores of "
         f"{CIC['held_out']['Random Forest (project)']['f1']:.4f} (CIC-IDS2017 port scan) and "
         f"{UNSW['held_out']['Random Forest (project)']['f1']:.4f} (UNSW-NB15 reconnaissance). The sensor can measure only 40% and 60% of "
         f"their features; with the rest masked, the CIC-IDS2017 model kept {live_recall} recall while the UNSW-NB15 model needed "
         f"recalibration. Over {n(sum(s['trials'] for s in SC['scenarios']))} randomised sessions the detection engine found all "
-        f"{n(ST['attack_trials'])} attack sessions with the correct class, but missed all low-and-slow attacks and raised alerts "
-        f"for {n(ST['fp'])} of {n(ST['neg'])} normal-use sessions. In a simulation with stated assumptions, the learning policy raised "
-        "the mean attacker interactions per session by 68% over a static decoy. A suite of 68 automated tests passes. The report "
-        "states the limitations openly: no field deployment, no detection of slow attacks, and a small model contribution to "
-        "the live score.",
+        f"{n(ST['attack_trials'])} attack sessions with the correct class, but with rules alone it missed all low-and-slow "
+        f"attacks and raised alerts for {n(ST['fp'])} of {n(ST['neg'])} normal-use sessions. Adding the behaviour model detected "
+        f"{n(STB['evasive_detected'])} of the {n(STB['evasive_trials'])} low-and-slow sessions and raised recall from "
+        f"{pct(ST['recall'], 1)} to {pct(STB['recall'], 1)} with no new false alarm. In a simulation with stated assumptions, "
+        f"the learning policy raised the mean attacker interactions per session by 68% over a static decoy. A suite of "
+        f"{TESTS_TOTAL} automated tests passes. The report states the limitations openly: no field deployment, a behaviour "
+        "model trained on lab sessions only, and a small contribution of the pretrained models to the live score.",
     ]
     for text in texts:
         para = line(doc, "", align=WD_ALIGN_PARAGRAPH.JUSTIFY, spacing=1.5, indent=True, after=4)
@@ -612,7 +620,7 @@ def build(version, pages=None, fig_pages=None, tab_pages=None, front=None, out=N
     references(doc)
     appendices(doc)
     doc.d.core_properties.title = f"{TITLE} – Seminar & Mini-Project Report"
-    doc.d.core_properties.author = ""
+    doc.d.core_properties.author = ", ".join(name for name, _ in STUDENTS)
     out.parent.mkdir(parents=True, exist_ok=True)
     doc.save(out)
     return doc, toc_with_refs, figs, tabs, problems, unref

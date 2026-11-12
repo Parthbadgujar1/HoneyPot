@@ -17,6 +17,10 @@ M = json.loads((DATA / "model_evaluation.json").read_text(encoding="utf-8"))
 SC = json.loads((DATA / "scenario_evaluation.json").read_text(encoding="utf-8"))
 AD = json.loads((DATA / "adaptive_evaluation.json").read_text(encoding="utf-8"))
 LIVE = json.loads((DATA / "live_run_summary.json").read_text(encoding="utf-8"))
+# Behaviour model trained on the sensor's own event format, and the scenario
+# evaluation rerun with that model switched on.
+BE = json.loads((DATA / "behaviour_evaluation.json").read_text(encoding="utf-8"))
+SCB = json.loads((DATA / "scenario_evaluation_behaviour.json").read_text(encoding="utf-8"))
 REFS = json.loads((DATA / "references.json").read_text(encoding="utf-8"))
 CIC, UNSW = M["cic"], M["unsw"]
 
@@ -68,10 +72,11 @@ CONSOLE_LINES = count_lines("honeypot-backend/sensor/admin", "index.html")
 # Derived experiment figures
 # ----------------------------------------------------------------------
 
-def scenario_totals():
-    attack = [s for s in SC["scenarios"] if s["group"] == "attack"]
-    evasive = [s for s in SC["scenarios"] if s["group"] == "evasive"]
-    benign = [s for s in SC["scenarios"] if s["group"] == "benign"]
+def scenario_totals(data=None):
+    data = data or SC
+    attack = [s for s in data["scenarios"] if s["group"] == "attack"]
+    evasive = [s for s in data["scenarios"] if s["group"] == "evasive"]
+    benign = [s for s in data["scenarios"] if s["group"] == "benign"]
     pos = sum(s["trials"] for s in attack + evasive)
     tp = sum(s["detected"] for s in attack + evasive)
     neg = sum(s["trials"] for s in benign)
@@ -85,11 +90,28 @@ def scenario_totals():
         "attack_trials": sum(s["trials"] for s in attack), "attack_detected": sum(s["detected"] for s in attack),
         "attack_medium_plus": sum(s["medium"] + s["high"] for s in attack),
         "attack_correct": sum(s["correct_class"] for s in attack),
+        "evasive_trials": sum(s["trials"] for s in evasive),
+        "evasive_detected": sum(s["detected"] for s in evasive),
+        "blocked": sum(s["blocked"] for s in attack + evasive),
         "n_attack": len(attack), "n_evasive": len(evasive), "n_benign": len(benign),
     }
 
 
 ST = scenario_totals()
+STB = scenario_totals(SCB)
+
+
+def _count_tests(name: str) -> int:
+    return len(re.findall(r"^\s+def test_", (ROOT / "honeypot-backend" / "tests" / name)
+                          .read_text(encoding="utf-8"), re.M))
+
+
+TESTS_ORIGINAL = _count_tests("test_sensor.py")
+TESTS_EXT = _count_tests("test_extensions.py")
+TESTS_LOOP = _count_tests("test_adaptive_loop.py")
+TESTS_TOTAL = TESTS_ORIGINAL + TESTS_EXT + TESTS_LOOP
+BM = BE["metrics"]
+BM_RVM = BE["rules_vs_model"]["by_class"]
 TOTAL_SESSIONS = sum(s["trials"] for s in SC["scenarios"])
 N_SCEN = len(SC["scenarios"])
 LEARN, STATIC, ROT, ORACLE = (AD["policies"][k] for k in ("learning", "static", "rotation", "oracle"))

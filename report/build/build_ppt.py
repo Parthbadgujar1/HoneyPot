@@ -17,7 +17,8 @@ from pptx.dml.color import RGBColor  # noqa: E402
 from pptx.enum.text import PP_ALIGN  # noqa: E402
 from pptx.util import Emu, Inches, Pt  # noqa: E402
 
-from facts import (AD, CIC, LEARN, LIVE, ORACLE, ROOT, SC, ST, STATIC, UNSW, GAIN, n, pct, f4)  # noqa: E402
+from facts import (AD, BM, CIC, LEARN, LIVE, ORACLE, ROOT, SC, SCB, ST, STB, STATIC, TESTS_EXT, TESTS_LOOP,  # noqa: E402
+                   TESTS_ORIGINAL, TESTS_TOTAL, UNSW, GAIN, n, pct, f3, f4)
 
 SRC, OUT = Path(sys.argv[1]), Path(sys.argv[2])
 FIG, SHOT = ROOT / "report" / "figures", ROOT / "report" / "screens_web"
@@ -25,6 +26,9 @@ TITLE = "AI-Adaptive Honeypot for Network Deception and Threat Intelligence"
 FONT = "Times New Roman"
 RED, NAVY, GREY = RGBColor(0xC0, 0, 0), RGBColor(0, 0x20, 0x60), RGBColor(0x59, 0x59, 0x59)
 RF = "Random Forest (project)"
+STUDENTS = [("Parth Badgujar", "AI3305"), ("Srujal Zanwar", "AI3331")]
+CLASS_DIV = "T.Y. AI & DS"
+GUIDE = "Prof. Y. R. Tayade"
 CH, UH = CIC["held_out"], UNSW["held_out"]
 
 prs = Presentation(str(SRC))
@@ -154,7 +158,27 @@ for run in runs:
 for run in runs[-1:]:
     if run.text == "":
         pass
-s1.notes_slide.notes_text_frame.text = "Introduce the project title, the guide and the team. Names are filled in the table on this slide."
+for shape in s1.shapes:
+    if shape.has_text_frame:
+        for p_ in shape.text_frame.paragraphs:
+            for run in p_.runs:
+                if run.text.strip().startswith("Prof."):
+                    run.text = GUIDE
+    if shape.has_table:
+        for row, (name, roll) in enumerate(STUDENTS, start=1):
+            for col, value in ((1, name), (2, CLASS_DIV), (3, roll)):
+                frame = shape.table.cell(row, col).text_frame
+                para0 = frame.paragraphs[0]
+                if para0.runs:
+                    para0.runs[0].text = value
+                    for extra in para0.runs[1:]:
+                        extra.text = ""
+                else:
+                    run = para0.add_run()
+                    run.text = value
+                    style(run, 14)
+s1.notes_slide.notes_text_frame.text = (f"Introduce the project title, the guide ({GUIDE}) and the team: "
+                                        + " and ".join(f"{a} ({b})" for a, b in STUDENTS) + ".")
 
 # ----------------------------------------------------------------------
 # Content slides
@@ -193,7 +217,7 @@ drop_body(s)
 table(s, ["Gap in the literature", "Response in this project"], [
     ["Adaptive honeypots cover one protocol (SSH or HTTP)", "SSH, HTTP and 9 bait services with one persona"],
     ["Adaptation rarely closed with detection and response", "One loop: detect, profile, adapt, respond, export"],
-    ["ML results from offline files; live-feature mismatch unmeasured", "Feature coverage measured; models re-tested with masked features"],
+    ["ML results from offline files; live-feature mismatch unmeasured", "Coverage measured; behaviour model trained on the sensor's own features"],
     ["Benchmark duplicates and errors inflate scores", "De-duplication, overlap removal, other-day tests"],
     ["Few honest adaptive-versus-static comparisons", "Static, rotation, learning and oracle compared with stated assumptions"],
 ], 0.6, 1.5, 12.1, [5.6, 6.0], size=18, row_h=0.85)
@@ -202,9 +226,9 @@ s = new_slide("Proposed Research Objectives", "Each objective can be checked aga
 bullets(s, [
     "Implement SSH, HTTP and nine bait decoys that never execute attacker input.",
     "Detect 7 reconnaissance and 6 web-attack classes with explainable evidence and a 0–100 score.",
-    "Add two Random Forests (CIC-IDS2017, UNSW-NB15) and re-evaluate them leakage-free.",
+    "Add two Random Forests (CIC-IDS2017, UNSW-NB15), re-evaluate them leakage-free, and train a behaviour model on the sensor's own events.",
     "Learn which decoy persona keeps each attack class engaged (UCB1).",
-    "Respond with guarded firewall blocks; export ATT&CK-mapped indicators and STIX 2.1.",
+    "Respond with guarded blocks (Windows or Linux, optional approval); export ATT&CK indicators and STIX 2.1.",
     f"Measure with tests, {n(sum(x['trials'] for x in SC['scenarios']))} randomised sessions and a simulation; report limits.",
 ], size=24, space=12)
 
@@ -218,8 +242,8 @@ drop_body(s)
 picture(s, FIG / "architecture.png", 0.5, 1.3, 6.9, 5.5)
 bullets(s, [
     "Decoys||: SSH (Paramiko), HTTP, 9 bait services, firewall-log reader",
-    "Detection||: 13 rule classes + two Random Forests",
-    "Response||: learning persona policy, guarded block manager, SQLite store",
+    "Detection||: 13 rule classes, two pretrained Random Forests, behaviour model",
+    "Response||: profile-steered learning persona policy, guarded block manager (netsh / iptables, approval), SQLite store",
     "Interfaces||: operator console, FastAPI bridge, React dashboard, STIX export",
 ], left=7.6, top=1.6, width=5.2, height=4.8, size=19, space=14, ph=False)
 
@@ -228,10 +252,10 @@ drop_body(s)
 picture(s, FIG / "flowchart.png", 0.5, 1.2, 5.0, 5.65)
 bullets(s, [
     "Rule points R = min(90, strongest + 10 × (k − 1))",
-    "Model points ML = round(30·p_CIC + 10·p_UNSW)",
+    "Model points ML = round(30·p_CIC + 10·p_UNSW) + B (behaviour model, ≤ 20)",
     "Score S = min(100, R + ML); LOW < 45 ≤ MEDIUM < 75 ≤ HIGH",
     "Cooldown 120 s stops repeated findings unless severity rises",
-    "Block only if class is blocking and S ≥ 75, never for protected addresses",
+    "Block only if class is blocking and S ≥ 75, never for protected addresses; optionally after approval",
 ], left=5.8, top=1.6, width=7.0, height=4.8, size=20, space=14, ph=False)
 
 s = new_slide("Datasets", "Two public datasets, one binary task each.")
@@ -247,13 +271,13 @@ table(s, ["Item", "CIC-IDS2017 (port scan)", "UNSW-NB15 (reconnaissance)"], [
 s = new_slide("Technology Stack (Methods / Techniques / Algorithms)", "Versions were read from the project environment.")
 drop_body(s)
 table(s, ["Layer", "Technology"], [
-    ["Language and ML", "Python 3.13, scikit-learn 1.6.1 (Random Forest, 100 trees), pandas, NumPy"],
+    ["Language and ML", "Python 3.13, scikit-learn 1.6.1 (Random Forest, Isolation Forest), pandas, NumPy"],
     ["Decoys", "Paramiko 5.1 (SSH), Starlette / Uvicorn (HTTP), asyncio bait listeners"],
     ["Storage", "SQLite (sensor); SQLAlchemy and PostgreSQL (original backend)"],
-    ["Response", "Windows Defender Firewall via netsh; UCB1 learning policy"],
+    ["Response", "Windows Firewall (netsh) or Linux iptables; UCB1 learning policy; Docker image"],
     ["Intelligence", "MITRE ATT&CK mapping, STIX 2.1 export, JSON / CSV indicators"],
     ["Interfaces", "FastAPI 0.147, React 19, Vite 8, Recharts 3"],
-    ["Quality", "68 automated tests (unittest), sandbox run with browser tests"],
+    ["Quality", f"{TESTS_TOTAL} automated tests (unittest), sandbox run with browser tests"],
 ], 0.6, 1.4, 12.1, [2.4, 9.2], size=16, row_h=0.62)
 
 s = new_slide("Algorithms", "Three small algorithms: fusion, Random Forest scoring and the UCB1 persona policy.")
@@ -296,7 +320,7 @@ table(s, ["Model", "Features measured live", "Recall", "ROC-AUC"], [
 bullets(s, [
     "The CIC model degrades gracefully with only 40% of its features.",
     "The UNSW model needs recalibration: the ranking is good (AUC 0.996) but probabilities fall below 0.5.",
-    "So the models add only about 0–3.5 of a possible 40 points: the rules carry detection.",
+    "So these models add only about 0–3.5 of a possible 40 points; this led to the behaviour model (next slides).",
     "Benchmark scores say little about live use (Lanvin 2023; Flood 2024; Elangovan 2026).",
 ], left=0.7, top=3.5, width=12.0, height=3.4, size=20, space=10, ph=False)
 
@@ -306,10 +330,26 @@ picture(s, FIG / "scenario_outcomes.png", 0.3, 1.25, 7.6, 5.6)
 bullets(s, [
     f"All {n(ST['attack_detected'])} attack sessions detected, class correct",
     f"Recall {pct(ST['recall'], 1)}, precision {pct(ST['precision'], 1)}, false-alarm rate {pct(ST['fpr'], 0)}",
-    "Missed: every low-and-slow session",
+    "Rules alone missed every low-and-slow session",
     "False alarms: uptime monitor, long browsing",
     f"Mean {SC['event_processing_ms']['mean']:.1f} ms per event",
 ], left=8.0, top=1.5, width=5.0, height=5.0, size=18, space=12, ph=False)
+
+s = new_slide("Behaviour Model Trained on Sensor Telemetry", "Closes the gap between benchmark features and what the sensor measures.")
+drop_body(s)
+bullets(s, [
+    "Random Forest names the family (benign, recon, credential, web, multi-stage); Isolation Forest flags the unfamiliar",
+    "19 features from the sensor's own events: timing, ports, paths, web-attack matches, SSH attempts, honeytokens",
+    "Labels from lab scenarios or operator labels, never from the rules",
+    f"Lab cross-validation (GroupKFold by session): accuracy {pct(BM['accuracy'], 1)}, macro-F1 {f4(BM['macro_f1'])}, benign FPR {pct(BM['false_positive_rate'], 1)}",
+    "Lab scores are not field accuracy: retrain on labelled real sessions",
+], size=19, space=10, top=1.4, height=3.0)
+table(s, ["Scenario evaluation", "Rules + pretrained", "+ behaviour model"], [
+    ["Low-and-slow sessions detected", f"{ST['evasive_detected']} of {ST['evasive_trials']}", f"{STB['evasive_detected']} of {STB['evasive_trials']}"],
+    ["Recall", pct(ST["recall"], 1), pct(STB["recall"], 1)],
+    ["False-alarm rate", pct(ST["fpr"], 1), pct(STB["fpr"], 1)],
+    ["F1-score", f3(ST["f1"]), f3(STB["f1"])],
+], 0.9, 4.45, 11.5, [5.1, 3.2, 3.2], size=16, row_h=0.5)
 
 s = new_slide("Performance Analysis: Adaptive Deception", "A simulation with stated assumptions; not field evidence.")
 drop_body(s)
@@ -339,7 +379,7 @@ caption(s, "Decoy actions and why each was made", 6.7, 5.7, 6.2, 14)
 
 s = new_slide("Testing and Validation", "Unit tests, integration tests on real sockets, and manual sandbox cases.")
 bullets(s, [
-    "68 automated tests pass: 53 for the original sensor and 15 for the new modules.",
+    f"{TESTS_TOTAL} automated tests pass: {TESTS_ORIGINAL} original sensor, {TESTS_EXT} extension modules, {TESTS_LOOP} adaptive loop.",
     "Tests use a temporary database and a fake firewall runner, so no rule is created.",
     "Integration tests start the SSH, HTTP and bait decoys on loopback ports.",
     "10 manual system cases in a sandbox (decoys, dashboard, console, dry-run block): all passed.",
@@ -359,9 +399,9 @@ s = new_slide("Conclusion", "Summarise results and the honest limits.")
 bullets(s, [
     "Delivered: one loop from decoy to detection, profile, adaptive persona, guarded response and STIX export.",
     f"Models: F1 {f4(CH[RF]['f1'])} (CIC) and {f4(UH[RF]['f1'])} (UNSW) held-out; rules carry live detection.",
-    f"Engine: all attack sessions found; learning policy +{pct(GAIN, 0)} interactions (simulation).",
-    "Limits: no field data; slow attacks missed; false alarms on monitors; Windows-only blocking; two data stores.",
-    "Future: train on own telemetry, field comparison with real attackers, Linux firewall, Docker, PostgreSQL sync, TLS and roles.",
+    f"Engine: all attack sessions found; behaviour model raised recall {pct(ST['recall'], 1)} → {pct(STB['recall'], 1)}; learning policy +{pct(GAIN, 0)} (simulation).",
+    "Limits: no field data; behaviour model lab-trained; false alarms on monitors; two data stores.",
+    "Future: label real sessions and retrain, field comparison with real attackers, Linux host trial, PostgreSQL sync, TLS and roles.",
 ], size=22, space=14)
 
 REFS_1 = [

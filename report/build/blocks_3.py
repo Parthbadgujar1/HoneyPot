@@ -264,7 +264,7 @@ results_scenarios = [
       "and, in dry-run mode, a block decision, as did 59% of TCP scans and 16% of SSH guessing sessions. Detection was quick: "
       "the first finding appeared after a median of three to five events, and the new web-attack rules fire on the first "
       "matching request."),
-    P(f"The weaknesses are equally clear. None of the {n(sum(s['trials'] for s in SC['scenarios'] if s['group'] == 'evasive'))} "
+    P(f"Without the behaviour model the weaknesses are equally clear. None of the {n(sum(s['trials'] for s in SC['scenarios'] if s['group'] == 'evasive'))} "
       "low-and-slow sessions was detected: one port every 200–280 seconds, one SSH guess every 35–60 seconds, and a "
       "single request for a sensitive file all stay below the window-based thresholds. Among the normal-use scenarios, two "
       "raised alerts: a multi-port uptime monitor, which probes five services in a few seconds and is by definition "
@@ -287,8 +287,71 @@ results_scenarios = [
     F("parts", "score_parts.png", "Contribution of rules and models to the mean score of each attack scenario", 5.7),
     P("{fig:parts} separates the two parts of the score. The model points are small: between 0 and about 3.5 points, "
       "out of the 40 they may add, because the models receive few measured features and rate decoy flows as unlikely "
-      "to be scans. The rules therefore carry the detection, and the models act as a minor secondary signal, as the design "
-      "intended."),
+      "to be scans. With the pretrained models alone, the rules therefore carry the detection. The next subsection "
+      "repeats the experiment with the behaviour model added."),
+]
+
+
+def _rvm_rows():
+    order = ["RECON_SCAN", "CREDENTIAL_ATTACK", "WEB_ATTACK", "MULTI_STAGE", "BENIGN"]
+    return [[c, str(BM_RVM[c]["sessions"]), pct(BM_RVM[c]["rules_rate"], 1), pct(BM_RVM[c]["model_rate"], 1)]
+            for c in order]
+
+
+def _scen_compare_rows():
+    rows = []
+    for a, b in zip(SC["scenarios"], SCB["scenarios"]):
+        if a["group"] == "attack" and a["blocked"] == b["blocked"]:
+            continue
+        rows.append([{"attack": "Attack", "evasive": "Low-and-slow", "benign": "Normal"}[a["group"]], a["scenario"],
+                     f"{a['detected']} → {b['detected']}", f"{a['high']} → {b['high']}",
+                     f"{a['blocked']} → {b['blocked']}"])
+    return rows
+
+
+results_behaviour = [
+    P("**Behaviour model on lab sessions.** The behaviour model was trained on "
+      f"{n(BE['data']['lab_sessions'])} generated lab sessions ({n(BM['samples'])} samples including prefixes) and evaluated "
+      f"with {BM['cv']}, so a session and its prefixes were never in both the training and the test fold. "
+      "{tab:bcls} gives the per-class figures."),
+    T("bcls", "Cross-validated results of the behaviour model on lab sessions",
+      ["Class", "Precision", "Recall", "F1-score", "Samples"],
+      [[c, f3(BM["per_class"][c]["precision"]), f3(BM["per_class"][c]["recall"]), f3(BM["per_class"][c]["f1-score"]),
+        n(BM["per_class"][c]["support"])] for c in BM["confusion_labels"]],
+      [1.9, 1.0, 1.0, 1.0, 1.0], size=9.5, align=["l", "c", "c", "c", "c"], bold_first=True),
+    P(f"Accuracy was {pct(BM['accuracy'], 2)}, macro-F1 {f4(BM['macro_f1'])} and the benign false-positive rate "
+      f"{pct(BM['false_positive_rate'], 2)}. These figures are high because generated sessions are cleaner than real "
+      "traffic. They show that the features separate the five families; they are not field accuracy. On the same lab "
+      "sessions, {tab:rvm} compares the share of sessions that the rules alone and the model flag as an attack."),
+    T("rvm", "Share of lab sessions flagged as an attack: rules alone versus the behaviour model (for BENIGN, the false-alarm rate)",
+      ["Family", "Sessions", "Rules", "Model"], _rvm_rows(),
+      [2.0, 1.0, 1.2, 1.2], size=9.5, align=["l", "c", "c", "c"], bold_first=True),
+    P("The rules miss slow scans and slow password guessing because those stay outside the time windows; the model, which "
+      "looks at the whole retained history, finds them."),
+    P("**Scenario evaluation with the behaviour model.** The stronger test is the scenario set of {tab:scen}, which was "
+      "written independently of the lab generator. It was replayed through the same engine with the behaviour model "
+      "switched on. {tab:scmp} lists the attack scenarios whose outcome changed together with every low-and-slow and normal-use scenario, and {tab:sess2} the session-level figures."),
+    T("scmp", "Effect of the behaviour model (rules and pretrained models → with behaviour model): attack scenarios whose blocks changed, and all low-and-slow and normal-use scenarios",
+      ["Group", "Scenario", "Detected", "HIGH", "Blocked"], _scen_compare_rows(),
+      [0.9, 2.6, 0.9, 0.8, 0.9], size=8.5, align=["l", "l", "c", "c", "c"]),
+    T("sess2", "Session-level detection quality without and with the behaviour model",
+      ["Measure", "Without", "With behaviour model"],
+      [["Recall", pct(ST["recall"], 1), pct(STB["recall"], 1)],
+       ["Precision", pct(ST["precision"], 1), pct(STB["precision"], 1)],
+       ["False-alarm rate", pct(ST["fpr"], 1), pct(STB["fpr"], 1)],
+       ["F1-score", f3(ST["f1"]), f3(STB["f1"])],
+       ["Low-and-slow sessions detected", f"{n(ST['evasive_detected'])} of {n(ST['evasive_trials'])}",
+        f"{n(STB['evasive_detected'])} of {n(STB['evasive_trials'])}"],
+       ["Attack sessions with a block decision", n(ST["blocked"]), n(STB["blocked"])],
+       ["Event processing time (mean)", f"{SC['event_processing_ms']['mean']:.1f} ms", f"{SCB['event_processing_ms']['mean']:.1f} ms"]],
+      [2.4, 1.5, 1.8], size=9.5, align=["l", "c", "c"], bold_first=True),
+    P(f"Every slow scan and every slow SSH-guessing session was now detected, all of them by the model alone and with the "
+      f"correct family, at LOW severity and without a block. Recall rose from {pct(ST['recall'], 1)} to "
+      f"{pct(STB['recall'], 1)} and F1 from {f3(ST['f1'])} to {f3(STB['f1'])}. No normal-use scenario raised a new alert; "
+      "the two that already did (the uptime monitor and the long browsing session) still do, so the false-alarm rate is "
+      "unchanged. A single request for a sensitive file is still missed, because one event gives the model too little to "
+      "judge. The behaviour points also lift more real attacks to HIGH, so more of them reach a block decision; a site "
+      "that wants fewer automatic blocks can lower the model weight or require approval."),
 ]
 
 results_adaptive = [
@@ -357,7 +420,8 @@ comparative = [
        ["Adaptation method", "Q-learning", "Seq2Seq + DQN", "LLM generation", "UCB1 bandit on engagement"],
        ["Live detection rules", "No", "No", "No", "13 rule classes"],
        ["Attacker profile", "MDP of behaviour", "No", "No", "5 labels with confidence"],
-       ["Automated response", "No", "No", "No", "Guarded firewall block"],
+       ["Model trained on own telemetry", "No", "Yes (offline)", "No", "Yes, used live"],
+       ["Automated response", "No", "No", "No", "Guarded block, optional approval"],
        ["ATT&CK / STIX output", "No", "No", "No", "Yes"],
        ["Evidence in study", "Two experiments", "Offline metrics", "Human judges", "Tests, sessions, simulation"]],
       [1.3, 1.1, 1.2, 1.0, 1.5], size=8.5, bold_first=True),
@@ -396,10 +460,17 @@ test_rows = [
     ["STIX export", "1", "Valid, deterministic bundle with unique ids"],
     ["Learning policy", "4", "Exploration, preference for rewarded persona, exclusion, feedback window, recorded reason"],
     ["Profiler", "3", "Scanner versus credential attacker; empty history; confidence in [0, 1]"],
+    ["Linux firewall back end", "3", "Tagged iptables DROP rule inserted once; IPv6 uses ip6tables; back-end selection"],
+    ["Block approval", "3", "Automatic block waits, then applies on approval; rejection closes it; operator block approves"],
+    ["Behaviour model", "3", "Grouped cross-validation report; missing model reported; slow scan flagged that rules miss"],
+    ["Profile-driven deception", "4", "Persona from behaviour label; multi-stage gets level 3; weak profile ignored; web persona"],
+    ["Operator labels", "1", "Latest label wins; stored events read back for training"],
 ]
 
 testing = [
-    P("The project has an automated suite of 68 tests, 53 written for the original sensor and 15 for the new modules. All "
+    P(f"The project has an automated suite of {TESTS_TOTAL} tests: {TESTS_ORIGINAL} written for the original sensor, "
+      f"{TESTS_EXT} for the web-attack, intelligence and learning modules, and {TESTS_LOOP} for the behaviour model, "
+      "profile-driven deception, block approval and the Linux firewall back end. All "
       "pass. The tests use a temporary database and a fake firewall runner, so none of them creates a firewall rule; the "
       "integration tests start the decoys on free loopback ports. {tab:tests} lists the coverage."),
     T("tests", "Automated test coverage",
@@ -452,14 +523,18 @@ challenges_impl = [
         "such a listener as unavailable and continue with the others.",
         "**Elevation.** `netsh` needs an Administrator shell. Without it each block is recorded as FAILED, and the dashboard "
         "says that the action was not applied.",
-        "**Feature mismatch.** The models expect 78 and 42 features; the sensor measures 31 and 25. The coverage is measured, "
-        "reported with each score, and the model weight is limited to 40 points.",
+        "**Feature mismatch.** The pretrained models expect 78 and 42 features; the sensor measures 31 and 25. The coverage "
+        "is measured, reported with each score, and the model weight is limited to 40 points. The lasting fix was a "
+        "behaviour model trained on the features the sensor does measure.",
+        "**Circular labels.** Training the behaviour model on the rule engine's own findings would only have copied the "
+        "rules. Labels were therefore taken from the generating lab scenario or from an operator.",
         "**Duplicate and overlapping data.** Duplicate flows and train–test overlap were found and removed.",
         "**Protected local attackers.** When test attacks come from the same machine, the block manager rightly refuses to "
         "block them. The demonstration therefore shows the refusal and a separate manual block of a documentation address.",
         "**Plain-text secrets.** Captured passwords were originally stored as typed. They are now replaced by a digest before "
         "storage.",
-        "**Low-and-slow evasion and uptime monitors.** Measured and left as known limitations of window-based rules.",
+        "**Low-and-slow evasion and uptime monitors.** Slow scans and slow password guessing are now caught by the "
+        "behaviour model; uptime monitors and a single sensitive request remain known limitations.",
     ]),
 ]
 
@@ -477,49 +552,57 @@ conclusion = [
         f"exercised in the scenarios. In {n(ST['attack_trials'])} randomised attack sessions it detected every session with the correct class.",
         f"Two Random Forests were re-evaluated with de-duplicated, leakage-controlled splits: F1 {f4(CH[RF]['f1'])} on CIC-IDS2017 and "
         f"{f4(UH[RF]['f1'])} on UNSW-NB15. With only live-measurable features, the CIC-IDS2017 model kept {pct(CIC['held_out_live_features_only']['recall'], 1)} "
-        "recall, whereas the UNSW-NB15 model needs recalibration.",
+        "recall, whereas the UNSW-NB15 model needs recalibration. A behaviour model trained on the sensor's own event "
+        f"format raised scenario recall from {pct(ST['recall'], 1)} to {pct(STB['recall'], 1)} without new false alarms.",
         f"A UCB1 policy learns a persona per attack class from engagement feedback; in a simulation with stated assumptions it "
         f"raised the mean number of interactions from {STATIC['mean_steps']:.2f} to {LEARN['mean_steps']:.2f} ({pct(GAIN, 0)}).",
-        "Blocking is guarded by safety checks, and indicators are exported with ATT&CK techniques and as STIX 2.1.",
-        "68 automated tests pass, and the limitations are documented.",
+        "Blocking is guarded by safety checks, works with Windows Defender Firewall and Linux iptables, and can require "
+        "operator approval; indicators are exported with ATT&CK techniques and as STIX 2.1.",
+        f"{TESTS_TOTAL} automated tests pass, and the limitations are documented.",
     ]),
-    P("The central finding is that the rules, not the machine-learning models, carry the detection in a live sensor: the "
-      "models add 0–3.5 points of a possible 40 because most of their input features cannot be measured by a decoy. A "
-      "second finding is that high benchmark scores say little about live use, which confirms the warnings in the "
-      "literature {c:lanvin2023,flood2024,elangovan2026}."),
+    P("The central finding is that a model is only useful in a live sensor if it is trained on what the sensor can "
+      "measure. The two benchmark models add 0–3.5 points of a possible 40 because most of their input features cannot be "
+      "measured by a decoy, and with them the rules carry the detection. A behaviour model trained on the sensor's own "
+      f"event format detected all {n(STB['evasive_detected'])} slow-scan and slow-guessing sessions that the rules missed. "
+      "A second finding is that high benchmark scores say little about live use, which confirms the warnings in the "
+      "literature {c:lanvin2023,flood2024,elangovan2026}; the same caution applies to the behaviour model's lab scores."),
 ]
 
 limitations = [
     B([
         "**No field evidence.** All attacks came from the same machine or from simulation. Nothing was observed from the open "
         "internet or a campus network, and the adaptive gain was measured only in a simulation with assumed attacker behaviour.",
-        "**Slow attacks evade the rules.** None of the 300 low-and-slow sessions was detected.",
+        f"**Lab-trained behaviour model.** The behaviour model was trained on generated sessions; its "
+        f"{pct(BM['accuracy'], 1)} lab accuracy is not field accuracy, and it must be retrained on labelled real sessions.",
+        "**Single events stay invisible.** A single request for a sensitive file is detected neither by the rules nor by "
+        "the model.",
         "**False alarms on benign monitors.** An uptime monitor that probes several services and a long browsing session raised "
         "alerts, and the false-alarm rate (" + pct(ST["fpr"], 0) + ") holds for the scenarios chosen, not for a real network.",
         "**Weak model contribution.** The sensor measures 40% and 60% of the model features. The UNSW-NB15 model has zero recall "
         "at the default threshold when only measurable features are available.",
         "**Low-interaction decoys.** No shell or database engine is simulated, and the web decoy is a small set of pages.",
-        "**Single platform.** Blocking and the firewall log work only with Windows Defender Firewall.",
+        "**Platform coverage.** The firewall log reader works only on Windows. The iptables back end and the Docker image "
+        "were not exercised on a real Linux host.",
         "**Two stores.** The sensor uses SQLite and the original backend uses PostgreSQL; they are not synchronised.",
         "**Access control.** The console has one shared token, runs without TLS on the loopback address, and has no roles.",
-        "**Profiling is heuristic.** The behaviour labels are rule-based and their confidence is not a calibrated probability.",
+        "**Profiling is heuristic.** The profiler's labels are rule-based and their confidence is not a calibrated "
+        "probability; the behaviour model's probabilities are not calibrated either.",
     ]),
 ]
 
 future = [
     B([
-        "Collect labelled telemetry from the sensor itself and train supervised, anomaly-detection and sequence models on it, "
-        "which would close the gap between benchmark and live features.",
+        "Label real sessions in the console and retrain the behaviour model on them, then report field precision and "
+        "recall; add a sequence model over the order of events.",
         "Deploy the sensor, with the approval of the network team, on a campus segment and compare the learning policy with a "
         "static decoy using real attackers, measuring dwell time and useful interactions.",
-        "Add a Linux firewall back end (nftables or iptables), a Docker deployment, and human approval for high-impact "
-        "blocks.",
+        "Run the Docker image and the iptables back end on a Linux host, and add an nftables back end.",
         "Unify the SQLite sensor store with PostgreSQL through a defined synchronisation, and add TLS, role-based access and "
         "retention policies.",
         "Add decoys for databases, APIs, file upload and DNS, and consider constrained language-model responses with the "
         "state controls and leak checks described in {c:li2026,magazov2026}.",
         "Publish indicators through a TAXII service, and extend the correlation of campaigns across sensors.",
-        "Replace the heuristic profiler by a model trained on collected sessions and calibrate its confidence.",
+        "Calibrate the behaviour model's probabilities and merge the heuristic profiler into it once field data exist.",
     ]),
 ]
 

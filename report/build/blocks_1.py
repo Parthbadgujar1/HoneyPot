@@ -45,12 +45,14 @@ objectives = [
         "login attempt and request without ever executing attacker input.",
         "To develop a detection engine that identifies at least seven reconnaissance classes and four web-attack classes, "
         "each with explainable evidence and a score from 0 to 100.",
-        "To integrate two Random Forest models trained on CIC-IDS2017 and UNSW-NB15 as a secondary score, and to evaluate "
-        "them again with de-duplicated, leakage-controlled data splits.",
+        "To integrate two Random Forest models trained on CIC-IDS2017 and UNSW-NB15 as a secondary score, to evaluate "
+        "them again with de-duplicated, leakage-controlled data splits, and to train a behaviour model on the sensor's own "
+        "event format so that training and live scoring use the same features.",
         "To implement adaptive deception that changes the decoy persona and engagement level for each attacker and learns "
         "from engagement feedback which persona suits which attack class.",
-        "To provide guarded automatic response through Windows Defender Firewall and threat-intelligence outputs "
-        "(attacker profiles, campaigns, MITRE ATT&CK mapping and STIX 2.1 export).",
+        "To provide guarded automatic response through Windows Defender Firewall or Linux iptables, with optional "
+        "operator approval, and threat-intelligence outputs (attacker profiles, campaigns, MITRE ATT&CK mapping and STIX "
+        "2.1 export).",
         f"To measure the system with unit tests, {n(TOTAL_SESSIONS)} randomised sessions in {N_SCEN} scenarios and a "
         "static-versus-learning deception experiment, and to document its limitations.",
     ]),
@@ -146,13 +148,14 @@ problem_def = [
 scope_limits = [
     P("**Scope.** The work covers network-level reconnaissance (port scans, service discovery, banner grabbing, ICMP sweeps), "
       "SSH password guessing, web endpoint probing, four web-attack families (SQL injection, cross-site scripting, command "
-      "injection and path traversal), honeytoken reuse, adaptive persona selection, guarded firewall blocking on Windows, "
-      "and threat-intelligence export."),
+      "injection and path traversal), honeytoken reuse, adaptive persona selection, guarded firewall blocking on Windows "
+      "and Linux, and threat-intelligence export."),
     P("**Limitations.** The decoys are low-interaction: no shell is granted and no attacker command is executed. Blocking "
-      "uses Windows Defender Firewall only. The two machine-learning models contribute a small part of the score because "
-      "the sensor measures only part of their input features. The sensor and the test attackers ran on one device, so no "
-      "observation from the open internet or a campus network is claimed. Slow attacks that stay below the detection "
-      "windows are not detected. These limits are measured and discussed in Chapters 4 and 5."),
+      "was tested with Windows Defender Firewall; the iptables back end is covered by unit tests only. The two pretrained "
+      "models contribute a small part of the score because the sensor measures only part of their input features. The "
+      "behaviour model that closes this gap was trained on generated lab sessions, not on field data. The sensor and the "
+      "test attackers ran on one device, so no observation from the open internet or a campus network is claimed. These "
+      "limits are measured and discussed in Chapters 4 and 5."),
 ]
 
 problem_solving = [
@@ -162,7 +165,9 @@ problem_solving = [
       "their scores were added to the rule points. Fourth, a deception policy was added that selects a persona and an "
       "engagement level per attacker, and a bandit algorithm was used to learn from the attacker's continued activity "
       "which persona keeps each attack class engaged. Fifth, a block manager, a threat-intelligence module and a "
-      "dashboard were attached. Sixth, the whole system was tested and measured, and the weaknesses found were recorded."),
+      "dashboard were attached. Sixth, the whole system was tested and measured. Because the measurement showed that the "
+      "pretrained models add little and that slow attacks escape the rules, a seventh step was added: a behaviour model "
+      "was trained on the sensor's own event format and the measurement was repeated with it."),
 ]
 
 # ----------------------------------------------------------------------
@@ -308,7 +313,8 @@ gap = [
        ["G2", "Adaptation is seldom closed with live detection, response and intelligence.",
         "One pipeline: event, rules and models, profile, persona, response, export."],
        ["G3", "Machine-learning results come from offline files; the mismatch with live-measurable features is rarely measured.",
-        "Measured-feature coverage reported and models re-tested with unmeasured features masked."],
+        "Measured-feature coverage reported, models re-tested with unmeasured features masked, and a behaviour model "
+        "trained on the sensor's own features."],
        ["G4", "Benchmark duplicates and errors inflate scores {c:lanvin2023,flood2024}.",
         "De-duplication, overlap removal, stratified splits and tests on other capture days."],
        ["G5", "Honeypot data are analysed offline.", "Online scoring, attacker profiles, ATT&CK mapping and STIX 2.1 export."],
@@ -324,7 +330,7 @@ proposed_system = [
     P("The proposed system is a single Python process, called the sensor, that hosts the decoys, the detection engine, the "
       "deception policy, the block manager and an operator console, together with a FastAPI bridge and a React dashboard. "
       "Every decoy emits events in one common format. The detection engine evaluates behavioural rules over sliding windows, "
-      "adds the output of two Random Forest models, maps the result to ATT&CK techniques, assigns a behavioural profile "
-      "with a confidence value, and then asks the deception policy to adapt the decoy and the block manager to decide on a "
-      "response. All decisions and their reasons are stored, so that an analyst can see why each action was taken."),
+      "adds the output of two pretrained Random Forest models and of a behaviour model trained on the sensor's own "
+      "events, maps the result to ATT&CK techniques, assigns a behavioural profile with a confidence value, and then asks "
+      "the deception policy to adapt the decoy and the block manager to decide on a response. All decisions and their reasons are stored, so that an analyst can see why each action was taken."),
 ]

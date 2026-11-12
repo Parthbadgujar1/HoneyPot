@@ -89,7 +89,7 @@ blk_detection = [
        ["Scan minimum ports", "4", "HIGH severity from", "75"],
        ["SSH minimum attempts", "5", "Block minimum score", "75"],
        ["HTTP probe minimum paths", "5", "Block expiry (TTL)", "1,440 min"],
-       ["Model weights (CIC / UNSW)", "30 / 10", "Maximum active blocks", "200"]],
+       ["Model weights (CIC / UNSW / behaviour)", "30 / 10 / 20", "Maximum active blocks", "200"]],
       [1.9, 1.0, 1.9, 1.0], size=9.5, align=["l", "c", "l", "c"]),
     P("For a connection event, the sensor also builds a CIC-IDS2017 feature row and a UNSW-NB15 feature row from what it "
       f"measured and scores both models. The CIC model expects 78 features and the sensor measured "
@@ -97,6 +97,29 @@ blk_detection = [
       f"measured {UNSW['live_measured_features']} of 42 ({pct(UNSW['live_feature_coverage'], 1)}). The remaining features are "
       "left missing, and the median imputer stored inside each model pipeline fills them. The coverage is stored with every "
       "finding so that an analyst can judge how far the model score should be trusted."),
+    P("**Behaviour model.** Because the pretrained models see only part of their features, a third model was trained on "
+      "the features the sensor itself computes from the event history of a source ({tab:bfeat}). It has two parts, saved "
+      "together. A Random Forest of 120 trees with balanced class weights names the attack family of the source "
+      "(BENIGN, RECON_SCAN, CREDENTIAL_ATTACK, WEB_ATTACK or MULTI_STAGE) with a class probability as confidence. An "
+      "Isolation Forest of 150 trees, fitted on the same vectors, flags behaviour unlike anything in the training data, so "
+      "that unfamiliar activity is not silently scored as benign. Counts and durations are log-transformed before both "
+      "models. A prediction is recomputed at most every five events or five seconds per source, because a fast scan can "
+      "emit hundreds of events per second."),
+    T("bfeat", "Features of the behaviour model, computed from one source's retained history",
+      ["Group", "Features"],
+      [["Volume and timing", "events, span, rate per second, mean gap between events"],
+       ["Network", "connections, firewall drops, silent connections, distinct ports, distinct services"],
+       ["Web", "HTTP requests, distinct paths, sensitive paths, share of error responses, web-attack matches and families"],
+       ["Credentials", "SSH attempts, distinct user names, honeytoken hits"],
+       ["Mix", "number of distinct event kinds"]],
+      [1.4, 4.7], size=9.5, bold_first=True),
+    P("The training labels never come from the rule engine, otherwise the model would only copy the rules. They come from "
+      "two sources: a lab scenario generator that writes randomised attacker and benign sessions as the same event records "
+      "the listeners emit, labelled with the scenario that produced them, and sources that an operator labels in the "
+      "console. Each session also contributes its first 2, 4, 8, 16 and 32 events as extra samples with the same label, so "
+      "that the model learns to recognise an attack before it ends. When no rule fires but the model is confident "
+      "(at least 12 points from at least three events), the engine raises the class ML_BEHAVIOUR_SUSPECTED. That class is "
+      "never a blocking class, so the model alone can raise an alert and change the decoy but cannot block an address."),
 ]
 
 blk_profile = [
@@ -104,7 +127,8 @@ blk_profile = [
       "rate, distinct ports and paths, SSH attempts, web-attack matches and honeytoken hits) and scores five behavioural "
       "labels: automated scanner, credential attacker, web-exploit attacker, manual explorer and targeted multi-stage "
       "activity. The confidence value is the share of positive evidence that supports the winning label. It is "
-      "a measure of how clearly the behaviour fits a label, and does not identify a person or a group."),
+      "a measure of how clearly the behaviour fits a label, and does not identify a person or a group. The behaviour "
+      "model's family label, with its probability, is attached next to the profile."),
     P("Each class is also mapped to MITRE ATT&CK techniques {c:attack}, as in {tab:attack}. For example, port scans map to "
       "T1046 (Network Service Discovery), SSH guessing to T1110 (Brute Force) and honeytoken reuse to T1078 (Valid Accounts). "
       "The mapping describes what the observed behaviour resembles; it is not proof of a specific adversary."),
@@ -140,16 +164,30 @@ blk_deception = [
       "been presented (Section {sec:algo}). The hand-written choice acts only as a weak prior, worth two pseudo-observations. "
       "When a source repeats a scanning class, the policy picks the best persona other than the current one. This allows "
       "the decoy to discover which identity keeps a given kind of attacker engaged, without that knowledge being coded in advance."),
+    P("The attacker's profile and the behaviour model also steer the decoy. A label is used only when its confidence is at "
+      "least 0.5. A source profiled as targeted multi-stage activity, or labelled MULTI_STAGE by the model, receives the "
+      "deepest fake environment (level 3), because a deliberate attacker is where the most is learned. A source that looks "
+      "like a person exploring by hand receives at least level 2, so there is more content to read. When a finding's own "
+      "class has no persona of its own, for example a finding raised by the model alone, the bandit context is taken "
+      "from the profile instead: a credential attacker is treated like SSH guessing, a web exploiter like endpoint probing. "
+      "The six web-attack classes are now served the web-server persona. The reason for every choice, including the "
+      "profile that informed it, is stored with the decoy action."),
 ]
 
 blk_response = [
-    P("The **block manager** blocks a source through Windows Defender Firewall by running `netsh advfirewall` with an "
-      "argument list and never through a shell. A finding leads to a block only if its class is a blocking class and its "
-      "score is at least 75. Several safeguards apply: loopback addresses, the machine's own addresses, the default "
-      "gateway and allow-listed networks are never blocked; every block has an expiry time (24 hours by default); the "
-      "number of active blocks is limited to 200; and in dry-run mode the decision is recorded but no firewall rule is "
-      "created. A worker thread is the only place that calls `netsh`, and each result (active, failed, released) is "
-      "stored."),
+    P("The **block manager** blocks a source through a firewall back end that is chosen in the configuration: Windows "
+      "Defender Firewall through `netsh advfirewall`, or Linux `iptables`/`ip6tables`, which inserts one tagged DROP rule "
+      "per address and checks for an existing rule first. Commands are always run with an argument list and never through "
+      "a shell. A finding leads to a block only if its class is a blocking class and its score is at least 75. Several "
+      "safeguards apply: loopback addresses, the machine's own addresses, the default gateway and allow-listed networks are "
+      "never blocked; every block has an expiry time (24 hours by default); the number of active blocks is limited to 200; "
+      "and in dry-run mode the decision is recorded but no firewall rule is created. A worker thread is the only place that "
+      "touches the firewall, and each result (active, failed, released) is stored."),
+    P("For deployments where automatic blocking is too risky, the option `require_approval` holds every automatic block as "
+      "AWAITING_APPROVAL. Nothing is applied until an operator approves it in the console or with the Approve button of the "
+      "dashboard; the expiry time starts at approval. A rejected request is closed and recorded. A block placed by the "
+      "operator directly counts as an approval. For Linux hosts, a Docker image and a compose file start the sensor with "
+      "host networking, the iptables back end, dry run and approval enabled, and train the behaviour model during the build."),
     P("The **threat-intelligence module** builds a profile per source, links sources into campaigns when they share a "
       "honeytoken, a password hash, a username list, an unusual user agent or a set of ports, and exports indicators in "
       "JSON and CSV. User agents seen from more than ten sources are ignored as generic tooling. A new endpoint exports "
@@ -180,8 +218,11 @@ algorithms = [
       "source, the strongest rule sets the class and each additional rule adds ten points, up to 90:"),
     E("rule", "R = min( 90, rₘₐₓ + 10 · (k − 1) )"),
     P("where rₘₐₓ is the largest rule score and k the number of rules that fired. The model points convert the "
-      "highest attack probabilities seen in the last 60 seconds into at most 40 points:"),
-    E("ml", "ML = round( 30 · pᶜⁱᶜ + 10 · pᵤₙₛᵥ )"),
+      "highest attack probabilities seen in the last 60 seconds into at most 40 points, and the behaviour model adds at "
+      "most 20 more:"),
+    E("ml", "ML = round( 30 · pᶜⁱᶜ + 10 · pᵤₙₛᵥ ) + Bₘ"),
+    P("where Bₘ = round(15 · q) if the behaviour model predicts an attack family with probability q ≥ 0.6 (0 otherwise), "
+      "plus 5 if the Isolation Forest marks the behaviour as unfamiliar, capped at 20."),
     E("score", "S = min( 100, R + ML )"),
     P("The severity is LOW below 45, MEDIUM from 45 and HIGH from 75. As an example of a rule score, a port scan with d "
       "distinct ports within 60 seconds receives"),
@@ -205,12 +246,12 @@ algorithms = [
       "interaction only; it does not show that the attacker was deceived."),
     H3("Pseudocode"),
     CODE("""Algorithm 1: process one event e from source s
- 1  if e is a connection: score the flow with both models
+ 1  if e is a connection: score the flow with both pretrained models
  2  if e is HTTP or SSH: check e for honeytokens; classify web attacks
  3  redact secrets in e; store e; append e to history[s]; drop old events
  4  tell the deception policy that s interacted again (feedback)
- 5  rules <- evaluate all rules on history[s]
- 6  if rules is empty and not ML-only agreement: return nothing
+ 5  rules <- evaluate all rules on history[s]; B <- behaviour_model(history[s])
+ 6  if rules is empty and neither ML-only agreement nor a confident B: return nothing
  7  R <- min(90, strongest(rules) + 10 * (len(rules) - 1));  S <- min(100, R + ML)
  8  if same class in cooldown and severity not higher: return nothing
  9  profile <- build_profile(history[s]);  attach ATT&CK techniques
@@ -229,8 +270,9 @@ algorithms = [
  2  if score < 75: no action
  3  if source is loopback, this host, the gateway or allow-listed: refuse
  4  if an active block exists: return it; if 200 blocks are active: refuse
- 5  record block (PENDING) with expiry = now + TTL
- 6  worker: dry run -> mark DRY_RUN; else run netsh add rule -> ACTIVE or FAILED"""),
+ 5  if approval is required: record AWAITING_APPROVAL and wait for the operator
+ 6  record block (PENDING) with expiry = now + TTL
+ 7  worker: dry run -> mark DRY_RUN; else netsh or iptables add rule -> ACTIVE or FAILED"""),
 ]
 
 formulation = [
@@ -257,7 +299,8 @@ tech_stack = [
        ["Validation", "Pydantic / httpx", "2.14.1 / 0.28.1", "Request models; bridge client"],
        ["Dashboard", "React / Vite / Recharts / lucide-react", "19.3.1 / 8.3.5 / 3.10.1 / 1.61.0", "Monitoring interface"],
        ["Runtime", "Node.js / npm", "24.22.0 / 11.19.1", "Dashboard build and server"],
-       ["Firewall", "Windows Defender Firewall (netsh advfirewall)", "Windows 11", "Blocking"]],
+       ["Firewall", "Windows Defender Firewall (netsh) / Linux iptables", "Windows 11 / any", "Blocking"],
+       ["Deployment", "Docker / Docker Compose", "python:3.13-slim image", "Linux sensor deployment"]],
       [1.0, 2.1, 1.7, 1.5], size=9, bold_first=True),
     T("hw", "Hardware and operating system used",
       ["Item", "Specification"],
