@@ -6,7 +6,9 @@ Every event from a listener passes through ``DetectionEngine.observe``:
    reuse check for HTTP and SSH input) and stored.
 2. Per-IP history is updated and the rules for reconnaissance classes are
    evaluated over sliding windows.
-3. Rule points and ML points are combined into a score and severity.
+3. Rule points and ML points (pretrained flow models plus the behaviour
+   model trained on this sensor's own telemetry) are combined into a score
+   and severity.
 4. A finding is created (subject to a per-IP cooldown), the decoy policy
    adapts, the block decision is taken and the finding is stored.
 
@@ -20,6 +22,9 @@ HOST_DISCOVERY         repeated ICMP echo requests seen by the firewall log
 HTTP_ENDPOINT_PROBING  requests for known-sensitive or many distinct paths
 SSH_BRUTE_FORCE        many SSH authentication attempts in a short window
 HONEYTOKEN_REUSE       an attacker used a credential the decoy issued
+ML_BEHAVIOUR_SUSPECTED no rule fired, but the behaviour model is confident
+                       the source is attacking (e.g. a scan too slow for the
+                       rule windows)
 """
 
 from __future__ import annotations
@@ -60,6 +65,8 @@ SUSPICIOUS_PATH_PREFIXES = (
 
 ML_ONLY_MIN_POINTS = 25
 ML_ONLY_MIN_FLOWS = 3
+BEHAVIOUR_ONLY_MIN_POINTS = 12
+BEHAVIOUR_ONLY_MIN_EVENTS = 3
 
 
 @dataclass
@@ -83,8 +90,10 @@ class DetectionEngine:
         models: ModelBundle,
         decoys: DecoyPolicy,
         blocker: BlockManager,
+        behaviour=None,
     ):
         self.thresholds = config["detection"]
+        self.behaviour = behaviour
         self.store = store
         self.redact_secrets = config.get("privacy", {}).get("redact_secrets", True)
         self.models = models
@@ -387,6 +396,8 @@ class DetectionEngine:
         history = list(self._history[ip])
         rules = self._rules(history, now)
         ml_points, ml_summary, strong_flows = self._ml_points(ip, now)
+        behaviour = self.behaviour.score(ip, history, now) if self.behaviour else None
+        behaviour_points = behaviour["points"] if behaviour else 0
 
         if rules:
             # Each rule is already capped for its own class. Several triggered
@@ -400,9 +411,16 @@ class DetectionEngine:
             # several flows, because single-flow ML scores are noisy.
             rule_points = 0
             classification = "ML_RECON_SUSPECTED"
+        elif (behaviour and behaviour["label"] != "BENIGN"
+              and behaviour_points >= BEHAVIOUR_ONLY_MIN_POINTS
+              and len(history) >= BEHAVIOUR_ONLY_MIN_EVENTS):
+            rule_points = 0
+            classification = "ML_BEHAVIOUR_SUSPECTED"
         else:
             return None
 
+        flow_points = ml_points
+        ml_points = flow_points + behaviour_points
         score = min(100, rule_points + ml_points)
         severity = self._severity(score)
 
@@ -418,16 +436,25 @@ class DetectionEngine:
         }
 
         reasons = [rule.reason for rule in rules]
-        if ml_points:
+        if flow_points:
             reasons.append(
-                f"ML score {ml_points} points (CIC PortScan p="
+                f"ML score {flow_points} points (CIC PortScan p="
                 f"{_round(ml_summary.get('cic_portscan'))}, UNSW recon p="
                 f"{_round(ml_summary.get('unsw_recon'))})"
+            )
+        if behaviour_points:
+            reasons.append(
+                f"behaviour model {behaviour_points} points ({behaviour['label']} "
+                f"p={behaviour['confidence']}"
+                + (", unlike the training data" if behaviour["anomalous"] else "") + ")"
             )
         if not rules:
             reasons.append("behavioural rules did not trigger; ML-only agreement")
 
-        evidence: dict = {"ml": ml_summary, "profile": build_profile(history)}
+        ml_summary = {**ml_summary, "flow_points": flow_points,
+                      "behaviour_points": behaviour_points}
+        evidence: dict = {"ml": ml_summary, "behaviour": behaviour,
+                          "profile": build_profile(history)}
         for rule in rules:
             evidence[rule.name] = rule.evidence
 
@@ -441,7 +468,8 @@ class DetectionEngine:
             "ml_points": ml_points,
             "reasons": reasons,
             "techniques": [rule.name for rule in rules],
-            "attack": techniques_for([rule.name for rule in rules] or [classification]),
+            "attack": techniques_for([rule.name for rule in rules] or (
+                [behaviour["label"]] if classification == "ML_BEHAVIOUR_SUSPECTED" else [classification])),
             "evidence": evidence,
         }
 

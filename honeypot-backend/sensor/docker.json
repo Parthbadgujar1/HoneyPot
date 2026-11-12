@@ -1,0 +1,9 @@
+{
+  "_comment": "Overrides for the Linux container (merged over config.json). The Windows firewall log is not available there; blocking uses iptables, starts in dry run and asks for operator approval.",
+  "firewall_log": {"enabled": false},
+  "response": {
+    "backend": "iptables",
+    "enforce": false,
+    "require_approval": true
+  }
+}

@@ -32,6 +32,12 @@ TECHNIQUES: dict[str, list[tuple[str, str, str]]] = {
     "FILE_UPLOAD_ABUSE": [("T1505.003", "Server Software Component: Web Shell", "persistence")],
     "SSRF_LFI": [("T1190", "Exploit Public-Facing Application", "initial-access")],
     "ML_RECON_SUSPECTED": [("T1595", "Active Scanning", "reconnaissance")],
+    # Behaviour-model families, used when only the model flagged a source.
+    "RECON_SCAN": [("T1046", "Network Service Discovery", "discovery")],
+    "CREDENTIAL_ATTACK": [("T1110", "Brute Force", "credential-access")],
+    "WEB_ATTACK": [("T1190", "Exploit Public-Facing Application", "initial-access")],
+    "MULTI_STAGE": [("T1046", "Network Service Discovery", "discovery"),
+                    ("T1110", "Brute Force", "credential-access")],
 }
 
 _NS = uuid.UUID("5b0a2f2e-6d56-4a0c-9d6a-7c8d1d7a0001")

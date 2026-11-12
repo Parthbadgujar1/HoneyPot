@@ -60,7 +60,10 @@
     "unsw_model": "reconnaissance_model (1).joblib",
     "unsw_schema": "feature_schema (1).json",
     "cic_weight": 30,
-    "unsw_weight": 10
+    "unsw_weight": 10,
+    "behaviour_model": "data/behaviour_model.joblib",
+    "behaviour_weight": 20,
+    "behaviour_min_confidence": 0.6
   },
   "firewall_log": {
     "enabled": false,
@@ -70,6 +73,8 @@
   "response": {
     "block_enabled": true,
     "enforce": true,
+    "backend": "auto",
+    "require_approval": false,
     "block_min_score": 75,
     "block_classes": [
       "PORT_SCAN",

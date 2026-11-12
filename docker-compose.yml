@@ -1,0 +1,23 @@
+# Linux deployment of the honeypot sensor.
+#
+#   docker compose up -d --build
+#   docker compose exec sensor cat sensor/data/admin_token.txt
+#
+# Host networking lets the decoys see real source addresses and lets the
+# iptables backend block them on the host. The operator console stays on
+# 127.0.0.1:9100 of the host. Use only on a machine and network you are
+# authorised to run a honeypot on.
+services:
+  sensor:
+    build:
+      context: .
+      dockerfile: honeypot-backend/Dockerfile
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - sensor-data:/app/honeypot-backend/sensor/data
+    restart: unless-stopped
+
+volumes:
+  sensor-data:

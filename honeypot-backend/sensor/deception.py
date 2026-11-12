@@ -70,7 +70,27 @@ PERSONA_FOR_CLASS = {
     "HONEYTOKEN_REUSE": "legacy_linux",
     "HTTP_ENDPOINT_PROBING": "ubuntu_web",
     "HOST_DISCOVERY": "ubuntu_web",
+    "SQL_INJECTION": "ubuntu_web",
+    "XSS": "ubuntu_web",
+    "COMMAND_INJECTION": "ubuntu_web",
+    "PATH_TRAVERSAL": "ubuntu_web",
+    "FILE_UPLOAD_ABUSE": "ubuntu_web",
+    "SSRF_LFI": "ubuntu_web",
 }
+
+# When the finding's own class has no persona (an ML-only finding, say), the
+# attacker's behaviour profile or behaviour-model label picks the context.
+PROFILE_CONTEXT = {
+    "CREDENTIAL_ATTACKER": "SSH_BRUTE_FORCE",
+    "CREDENTIAL_ATTACK": "SSH_BRUTE_FORCE",
+    "WEB_EXPLOIT_ATTACKER": "HTTP_ENDPOINT_PROBING",
+    "WEB_ATTACK": "HTTP_ENDPOINT_PROBING",
+    "TARGETED_MULTI_STAGE": "HONEYTOKEN_REUSE",
+    "MULTI_STAGE": "HONEYTOKEN_REUSE",
+}
+
+# A profile is used only when it is at least this well supported.
+PROFILE_MIN_CONFIDENCE = 0.5
 
 # Scanning classes rotate banners so the same attacker cannot fingerprint
 # the host reliably across repeated probes.
@@ -167,20 +187,36 @@ class DecoyPolicy:
             level = max(level, 2)
         if classification == "HONEYTOKEN_REUSE" or prior_findings >= 6:
             level = MAX_LEVEL
+        reasons = []
+        labels = _profile_labels(finding)
+        if labels & {"TARGETED_MULTI_STAGE", "MULTI_STAGE"} and level < MAX_LEVEL:
+            # Several stages against several services: a deliberate attacker
+            # gets the deepest fake environment, where the most is learned.
+            level = MAX_LEVEL
+            reasons.append("profile shows multi-stage activity: full engagement")
+        elif "MANUAL_EXPLORER" in labels and level < 2:
+            # A human reads what is served, so give them breadcrumbs to follow.
+            level = 2
+            reasons.append("profile looks like manual exploration: more content to read")
         level = min(level, MAX_LEVEL)
 
         persona = current_persona
-        reasons = []
         now = time.time()
 
-        target = PERSONA_FOR_CLASS.get(classification)
+        context = classification
+        if context not in PERSONA_FOR_CLASS:
+            context = next((PROFILE_CONTEXT[label] for label in sorted(labels)
+                            if label in PROFILE_CONTEXT), classification)
+        target = PERSONA_FOR_CLASS.get(context)
         if target and current_persona == self._default:
-            persona = self.bandit.choose(classification) if self.bandit else target
+            persona = self.bandit.choose(context) if self.bandit else target
             how = "learned from engagement feedback" if self.bandit else "chosen by the static policy"
             reasons.append(
                 f"{classification}: serving {PERSONAS[persona]['label']} persona "
                 f"({how}) to keep the attacker engaged with plausible services"
             )
+            if context != classification:
+                reasons[-1] += f" [context {context} taken from the attacker profile]"
         elif (classification in SCANNING_CLASSES and prior_findings >= 2
               and now - state["changed_ts"] >= ROTATE_COOLDOWN_S):
             persona = (self.bandit.choose(classification, exclude=current_persona)
@@ -206,8 +242,8 @@ class DecoyPolicy:
         }
         if changed:
             self._store_state(ip, persona, level, decision["reason"])
-            if self.bandit:
-                self.bandit.started(ip, classification, persona)
+            if self.bandit and persona != current_persona:
+                self.bandit.started(ip, context, persona)
         return decision
 
     def note_interaction(self, ip: str, now: float | None = None) -> None:
@@ -365,6 +401,19 @@ class DecoyPolicy:
             "<p>The requested URL was not found on this server.</p>",
             persona,
         )
+
+
+def _profile_labels(finding: dict) -> set[str]:
+    """Well-supported behaviour labels attached to a finding."""
+    evidence = finding.get("evidence") or {}
+    labels = set()
+    profile = evidence.get("profile") or {}
+    if profile.get("label") and profile.get("confidence", 0) >= PROFILE_MIN_CONFIDENCE:
+        labels.add(profile["label"])
+    behaviour = evidence.get("behaviour") or {}
+    if behaviour.get("label") and behaviour.get("confidence", 0) >= PROFILE_MIN_CONFIDENCE:
+        labels.add(behaviour["label"])
+    return labels
 
 
 def _response(status: int, content_type: str, body: str, persona: dict) -> dict:

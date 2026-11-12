@@ -1,0 +1,149 @@
+{
+  "data": {
+    "lab_sessions": 600,
+    "labelled_sessions": 0,
+    "db": null
+  },
+  "metrics": {
+    "samples": 1920,
+    "groups": 600,
+    "class_counts": {
+      "BENIGN": 243,
+      "RECON_SCAN": 485,
+      "CREDENTIAL_ATTACK": 430,
+      "WEB_ATTACK": 411,
+      "MULTI_STAGE": 351
+    },
+    "cv": "GroupKFold(5) by session",
+    "accuracy": 0.9922,
+    "macro_f1": 0.9922,
+    "per_class": {
+      "BENIGN": {
+        "precision": 0.9918,
+        "recall": 0.9959,
+        "f1-score": 0.9938,
+        "support": 243.0
+      },
+      "RECON_SCAN": {
+        "precision": 0.9877,
+        "recall": 0.9897,
+        "f1-score": 0.9887,
+        "support": 485.0
+      },
+      "CREDENTIAL_ATTACK": {
+        "precision": 0.9953,
+        "recall": 0.9953,
+        "f1-score": 0.9953,
+        "support": 430.0
+      },
+      "WEB_ATTACK": {
+        "precision": 1.0,
+        "recall": 0.9976,
+        "f1-score": 0.9988,
+        "support": 411.0
+      },
+      "MULTI_STAGE": {
+        "precision": 0.9857,
+        "recall": 0.9829,
+        "f1-score": 0.9843,
+        "support": 351.0
+      }
+    },
+    "confusion_labels": [
+      "BENIGN",
+      "RECON_SCAN",
+      "CREDENTIAL_ATTACK",
+      "WEB_ATTACK",
+      "MULTI_STAGE"
+    ],
+    "confusion": [
+      [
+        242,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        480,
+        0,
+        0,
+        5
+      ],
+      [
+        2,
+        0,
+        428,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1,
+        410,
+        0
+      ],
+      [
+        0,
+        6,
+        0,
+        0,
+        345
+      ]
+    ],
+    "false_positive_rate": 0.0041
+  },
+  "importance": {
+    "mean_gap_s": 0.1064,
+    "silent_connections": 0.094,
+    "distinct_ports": 0.0898,
+    "connections": 0.085,
+    "http_error_ratio": 0.0849,
+    "rate_per_s": 0.0709,
+    "distinct_paths": 0.0641,
+    "web_attack_families": 0.0625,
+    "web_attack_matches": 0.0521,
+    "services": 0.0515,
+    "events": 0.0514,
+    "distinct_usernames": 0.0443,
+    "span_s": 0.0421,
+    "http_requests": 0.0323,
+    "suspicious_paths": 0.026,
+    "ssh_attempts": 0.0225,
+    "kinds": 0.0189,
+    "honeytoken_hits": 0.0014,
+    "fw_drops": 0.0
+  },
+  "rules_vs_model": {
+    "note": "share of sessions flagged as an attack (for BENIGN: false-positive rate)",
+    "by_class": {
+      "RECON_SCAN": {
+        "sessions": 132,
+        "rules_rate": 0.636,
+        "model_rate": 1.0
+      },
+      "CREDENTIAL_ATTACK": {
+        "sessions": 96,
+        "rules_rate": 0.375,
+        "model_rate": 1.0
+      },
+      "MULTI_STAGE": {
+        "sessions": 85,
+        "rules_rate": 1.0,
+        "model_rate": 1.0
+      },
+      "WEB_ATTACK": {
+        "sessions": 102,
+        "rules_rate": 1.0,
+        "model_rate": 1.0
+      },
+      "BENIGN": {
+        "sessions": 185,
+        "rules_rate": 0.0,
+        "model_rate": 0.0
+      }
+    }
+  }
+}

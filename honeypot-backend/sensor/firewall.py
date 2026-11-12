@@ -1,4 +1,8 @@
-"""Attacker IP blocking through Windows Defender Firewall.
+"""Attacker IP blocking through the host firewall.
+
+Backends: Windows Defender Firewall (``netsh advfirewall``) and Linux
+``iptables``/``ip6tables``. ``response.backend`` picks one; ``auto`` uses
+netsh on Windows and iptables elsewhere.
 
 Safety model
 ------------
@@ -9,8 +13,10 @@ Safety model
   config, this machine's own addresses and the default gateway.
 * Every block has a TTL (``block_ttl_minutes``) and is released
   automatically when it expires. ``0`` disables expiry.
-* Rules are created with ``netsh advfirewall`` using argument lists,
-  never through a shell.
+* Rules are created with argument lists, never through a shell.
+* With ``response.require_approval`` set, automatic blocks wait as
+  AWAITING_APPROVAL until an operator approves or rejects them. Operator
+  blocks from the console are applied directly.
 """
 
 from __future__ import annotations
@@ -44,16 +50,73 @@ def is_admin() -> bool:
     return hasattr(os, "geteuid") and os.geteuid() == 0
 
 
+def _run(command: list[str]) -> tuple[int, str]:
+    try:
+        completed = subprocess.run(
+            command, capture_output=True, text=True, timeout=30, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return 1, str(exc)
+    return completed.returncode, (completed.stdout + completed.stderr).strip()
+
+
 def _run_netsh(args: list[str]) -> tuple[int, str]:
-    completed = subprocess.run(
-        ["netsh", "advfirewall", "firewall", *args],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-    output = (completed.stdout + completed.stderr).strip()
-    return completed.returncode, output
+    return _run(["netsh", "advfirewall", "firewall", *args])
+
+
+class NetshBackend:
+    name = "netsh"
+
+    def __init__(self, runner: Callable[[list[str]], tuple[int, str]] | None = None):
+        self._run = runner or _run_netsh
+
+    def add(self, rule: str, ip: str) -> tuple[int, str]:
+        # Remove any leftover rule with the same name so the add cannot
+        # fail with a duplicate-name error.
+        self._run(["delete", "rule", f"name={rule}"])
+        return self._run([
+            "add", "rule", f"name={rule}", "dir=in", "action=block",
+            f"remoteip={ip}", "profile=any", "enable=yes",
+        ])
+
+    def remove(self, rule: str, ip: str) -> tuple[int, str]:
+        return self._run(["delete", "rule", f"name={rule}"])
+
+
+class IptablesBackend:
+    """One DROP rule per address at the top of INPUT, tagged with a comment."""
+
+    name = "iptables"
+
+    def __init__(self, runner: Callable[[list[str]], tuple[int, str]] | None = None):
+        self._run = runner or _run
+
+    @staticmethod
+    def _spec(rule: str, ip: str) -> tuple[str, list[str]]:
+        binary = "ip6tables" if ipaddress.ip_address(ip).version == 6 else "iptables"
+        return binary, ["INPUT", "-s", ip, "-m", "comment", "--comment", rule, "-j", "DROP"]
+
+    def add(self, rule: str, ip: str) -> tuple[int, str]:
+        binary, spec = self._spec(rule, ip)
+        if self._run([binary, "-C", *spec])[0] == 0:
+            return 0, "rule already present"
+        return self._run([binary, "-I", *spec])
+
+    def remove(self, rule: str, ip: str) -> tuple[int, str]:
+        binary, spec = self._spec(rule, ip)
+        if self._run([binary, "-C", *spec])[0] != 0:
+            return 0, "rule already absent"
+        return self._run([binary, "-D", *spec])
+
+
+def make_backend(name: str, runner=None):
+    if name == "auto":
+        name = "netsh" if sys.platform.startswith("win") else "iptables"
+    if name == "netsh":
+        return NetshBackend(runner)
+    if name == "iptables":
+        return IptablesBackend(runner)
+    raise ValueError(f"unknown firewall backend: {name}")
 
 
 class BlockManager:
@@ -73,6 +136,7 @@ class BlockManager:
         self.ttl_minutes: int = response["block_ttl_minutes"]
         self.max_active: int = response["max_active_blocks"]
         self.rule_prefix: str = response["rule_prefix"]
+        self.require_approval: bool = response.get("require_approval", False)
 
         self._allow_networks = [
             ipaddress.ip_network(cidr, strict=False)
@@ -83,7 +147,9 @@ class BlockManager:
         self._protected_refreshed = 0.0
 
         self._store = store
-        self._runner = runner or _run_netsh
+        # ``runner`` predates the backends and always meant netsh arguments.
+        self.backend = (NetshBackend(runner) if runner is not None
+                        else make_backend(response.get("backend", "auto")))
         self._admin_check = admin_check
         self._lock = threading.RLock()
         self._queue: queue.Queue = queue.Queue()
@@ -102,7 +168,8 @@ class BlockManager:
         if self.enforce and not self._admin_check():
             log.warning(
                 "Blocking is set to enforce, but this process is not elevated. "
-                "netsh will fail; run the sensor from an Administrator shell."
+                "%s will fail; run the sensor elevated (Administrator or root).",
+                self.backend.name,
             )
         self._thread = threading.Thread(
             target=self._worker, name="firewall-worker", daemon=True
@@ -120,6 +187,9 @@ class BlockManager:
             "enabled": self.enabled,
             "mode": self.mode,
             "enforce": self.enforce,
+            "backend": self.backend.name,
+            "require_approval": self.require_approval,
+            "awaiting_approval": len(self._store.blocks_awaiting_approval()),
             "elevated": self._admin_check(),
             "block_min_score": self.block_min_score,
             "block_classes": sorted(self.block_classes),
@@ -187,10 +257,17 @@ class BlockManager:
 
         reason = f"{classification} score {finding['score']}"
         try:
-            row = self.block(finding["src_ip"], reason, source="auto")
+            if self.require_approval:
+                row = self.request_approval(finding["src_ip"], reason)
+            else:
+                row = self.block(finding["src_ip"], reason, source="auto")
         except BlockError as exc:
             return {"action": "skipped", "reason": str(exc)}
 
+        if row["status"] == "AWAITING_APPROVAL":
+            return {"action": "approval_requested", "block_id": row["id"],
+                    "status": row["status"],
+                    "reason": "high-impact action held for operator approval"}
         return {
             "action": "block",
             "mode": self.mode,
@@ -199,6 +276,50 @@ class BlockManager:
             "expires": row["expires"],
         }
 
+    def _checked(self, ip: str) -> str:
+        try:
+            normalized = str(ipaddress.ip_address(ip.strip()))
+        except ValueError as exc:
+            raise BlockError(f"'{ip}' is not a valid IP address") from exc
+        protected = self.protected_reason(normalized)
+        if protected:
+            raise BlockError(f"Refusing to block {normalized}: {protected}")
+        return normalized
+
+    def request_approval(self, ip: str, reason: str) -> dict:
+        """Record an automatic block that waits for an operator decision."""
+        normalized = self._checked(ip)
+        with self._lock:
+            existing = self._store.active_block_for_ip(normalized)
+            if existing:
+                return existing
+            block_id = self._store.insert_block(
+                normalized, "AWAITING_APPROVAL", self.mode, "auto", reason, None
+            )
+        log.warning("Block of %s awaits approval: %s", normalized, reason)
+        return self._store.get_block(block_id)
+
+    def approve(self, block_id: int, ttl_minutes: int | None = None) -> dict:
+        with self._lock:
+            row = self._store.get_block(block_id)
+            if row is None or row["status"] != "AWAITING_APPROVAL":
+                raise BlockError("No block awaiting approval with that id")
+            self._checked(row["ip"])  # protection may have changed since
+            ttl = self.ttl_minutes if ttl_minutes is None else ttl_minutes
+            self._store.approve_block(block_id, time.time() + ttl * 60 if ttl > 0 else None)
+            self._queue.put(("add", block_id, row["ip"]))
+        log.warning("Block of %s approved by operator", row["ip"])
+        return self._store.get_block(block_id)
+
+    def reject(self, block_id: int) -> dict:
+        with self._lock:
+            row = self._store.get_block(block_id)
+            if row is None or row["status"] != "AWAITING_APPROVAL":
+                raise BlockError("No block awaiting approval with that id")
+            self._store.set_block_status(block_id, "REJECTED", released=True)
+        log.info("Block of %s rejected by operator", row["ip"])
+        return self._store.get_block(block_id)
+
     def block(
         self,
         ip: str,
@@ -206,14 +327,7 @@ class BlockManager:
         source: str = "manual",
         ttl_minutes: int | None = None,
     ) -> dict:
-        try:
-            normalized = str(ipaddress.ip_address(ip.strip()))
-        except ValueError as exc:
-            raise BlockError(f"'{ip}' is not a valid IP address") from exc
-
-        protected = self.protected_reason(normalized)
-        if protected:
-            raise BlockError(f"Refusing to block {normalized}: {protected}")
+        normalized = self._checked(ip)
 
         ttl = self.ttl_minutes if ttl_minutes is None else ttl_minutes
         if ttl < 0:
@@ -221,6 +335,9 @@ class BlockManager:
 
         with self._lock:
             existing = self._store.active_block_for_ip(normalized)
+            if existing and existing["status"] == "AWAITING_APPROVAL":
+                # An operator blocking the address is an approval.
+                return self.approve(existing["id"], ttl_minutes)
             if existing:
                 return existing
 
@@ -245,6 +362,8 @@ class BlockManager:
             existing = self._store.active_block_for_ip(normalized)
             if existing is None:
                 return None
+            if existing["status"] == "AWAITING_APPROVAL":
+                return self.reject(existing["id"])
             self._store.set_block_status(existing["id"], "REMOVING")
             self._queue.put(("remove", existing["id"], normalized))
         log.warning("Unblock %s from %s", normalized, source)
@@ -266,7 +385,7 @@ class BlockManager:
             time.sleep(0.05)
 
     # ------------------------------------------------------------------
-    # Worker thread: the only place that touches netsh
+    # Worker thread: the only place that touches the firewall
     # ------------------------------------------------------------------
 
     def _rule_name(self, ip: str) -> str:
@@ -294,19 +413,12 @@ class BlockManager:
             log.info("[dry-run] would block %s", ip)
             return
 
-        name = self._rule_name(ip)
-        # Remove any leftover rule with the same name so the add cannot
-        # fail with a duplicate-name error.
-        self._runner(["delete", "rule", f"name={name}"])
-        code, output = self._runner([
-            "add", "rule", f"name={name}", "dir=in", "action=block",
-            f"remoteip={ip}", "profile=any", "enable=yes",
-        ])
+        code, output = self.backend.add(self._rule_name(ip), ip)
         if code == 0:
             self._store.set_block_status(block_id, "ACTIVE")
         else:
             self._store.set_block_status(block_id, "FAILED", error=output[:500])
-            log.error("netsh could not block %s: %s", ip, output)
+            log.error("%s could not block %s: %s", self.backend.name, ip, output)
 
     def _apply_remove(self, block_id: int, ip: str) -> None:
         if not self.enforce:
@@ -314,11 +426,11 @@ class BlockManager:
             log.info("[dry-run] would unblock %s", ip)
             return
 
-        code, output = self._runner(["delete", "rule", f"name={self._rule_name(ip)}"])
+        code, output = self.backend.remove(self._rule_name(ip), ip)
         if code == 0:
             self._store.set_block_status(block_id, "RELEASED", released=True)
         else:
             self._store.set_block_status(
                 block_id, "RELEASE_FAILED", error=output[:500]
             )
-            log.error("netsh could not remove the block for %s: %s", ip, output)
+            log.error("%s could not remove the block for %s: %s", self.backend.name, ip, output)

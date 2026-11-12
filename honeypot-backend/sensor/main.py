@@ -30,6 +30,7 @@ import uvicorn
 
 from . import netinfo
 from .admin_app import create_admin_app
+from .behaviour import BehaviourModel
 from .config import data_path, load_config, sensor_path
 from .deception import DecoyPolicy, PERSONAS, PERSONA_FOR_CLASS
 from .policy import PersonaBandit
@@ -78,11 +79,17 @@ class SensorRuntime:
 
         self.store = Store(data_path(config, "db_path"))
         self.models = ModelBundle(config)
+        ml = config["ml"]
+        self.behaviour = (BehaviourModel(sensor_path(ml.get("behaviour_model", "data/behaviour_model.joblib")),
+                                         weight=int(ml.get("behaviour_weight", 20)),
+                                         min_confidence=float(ml.get("behaviour_min_confidence", 0.6)))
+                          if ml.get("enabled", True) else None)
         self.bandit = (PersonaBandit(list(PERSONAS), PERSONA_FOR_CLASS)
                        if config.get("adaptive", {}).get("learn_from_feedback", True) else None)
         self.decoys = DecoyPolicy(self.store, bandit=self.bandit)
         self.blocker = BlockManager(config, self.store)
-        self.engine = DetectionEngine(config, self.store, self.models, self.decoys, self.blocker)
+        self.engine = DetectionEngine(config, self.store, self.models, self.decoys, self.blocker,
+                                      behaviour=self.behaviour)
 
         self.admin_token, self.token_created = self._admin_token()
         self.listeners: dict[str, dict] = {}
@@ -132,6 +139,8 @@ class SensorRuntime:
             "bind_host": self.bind_host,
             "listeners": listeners,
             "models": self.models.status(),
+            "behaviour_model": self.behaviour.status() if self.behaviour else {"loaded": False,
+                                                                               "error": "ML disabled"},
             "firewall": self.blocker.status(),
             "engine": self.engine.summary(),
         }

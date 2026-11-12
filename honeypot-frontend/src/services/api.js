@@ -218,6 +218,14 @@ export const api = {
     return deleteRequest(`${DATA_PREFIX}/blocks/${encodeURIComponent(ip)}`, signal);
   },
 
+  approveBlock(blockId, signal) {
+    return postRequest(`${DATA_PREFIX}/blocks/${encodeURIComponent(blockId)}/approve`, signal);
+  },
+
+  rejectBlock(blockId, signal) {
+    return postRequest(`${DATA_PREFIX}/blocks/${encodeURIComponent(blockId)}/reject`, signal);
+  },
+
   blockAlertSource(alertId, signal) {
     return postRequest(`${DATA_PREFIX}/alerts/${encodeURIComponent(alertId)}/block`, signal);
   },

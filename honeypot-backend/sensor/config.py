@@ -111,3 +111,5 @@ def validate_config(config: dict) -> None:
     response = config["response"]
     if not 0 <= response["block_min_score"] <= 100:
         raise ValueError("block_min_score must be between 0 and 100")
+    if response.get("backend", "auto") not in ("auto", "netsh", "iptables"):
+        raise ValueError("response.backend must be auto, netsh or iptables")

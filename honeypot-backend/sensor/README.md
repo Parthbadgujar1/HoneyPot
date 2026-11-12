@@ -15,12 +15,17 @@ on PostgreSQL: the sensor keeps its own SQLite store.
 | Telemetry | `listeners/fwlog.py` | Reads Windows Firewall dropped-packet log, so scans of **closed** ports and ping sweeps are seen too. |
 | Telemetry | `store.py` | SQLite: events, findings, blocks, decoy actions, honeytokens. |
 | Detection | `engine.py` | Rules over sliding windows: `PORT_SCAN`, `SERVICE_DISCOVERY`, `BANNER_ENUMERATION`, `HOST_DISCOVERY`, `HTTP_ENDPOINT_PROBING`, `SSH_BRUTE_FORCE`, `HONEYTOKEN_REUSE`. |
-| ML | `ml.py` | Scores every measured connection with the two trained models in the project root (see below). Their output adds up to 40 points to the score. |
-| Adaptive deception | `deception.py` | Changes the attacker's persona (SSH and HTTP banners), engagement level (how much fake content is served), and rotates banners against repeated scanning. Every change is stored with its reason. |
-| Response | `firewall.py` | Blocks attacker IPs with Windows Defender Firewall rules (`netsh advfirewall`). Dry-run by default, with allowlist, gateway protection, TTL expiry and a cap on active blocks. |
+| Detection | `webattacks.py` | Signatures for SQL injection, XSS, command injection, path traversal, malicious uploads and SSRF/LFI in HTTP decoy requests. |
+| ML | `ml.py` | Scores every measured connection with the two pretrained models in the project root (see below). Their output adds up to 40 points to the score. |
+| ML | `behaviour.py` | Behaviour model trained on this sensor's own event format: RandomForest attack-family classifier (BENIGN, RECON_SCAN, CREDENTIAL_ATTACK, WEB_ATTACK, MULTI_STAGE) plus an IsolationForest for unfamiliar behaviour. Adds up to 20 points, and can raise `ML_BEHAVIOUR_SUSPECTED` on its own (never a blocking class) for activity too slow for the rule windows. |
+| Profiling | `profiler.py` | Behavioural label and confidence per source (automated scanner, credential attacker, web exploiter, manual explorer, targeted multi-stage). |
+| Adaptive deception | `deception.py`, `policy.py` | Changes the attacker's persona (SSH and HTTP banners), engagement level (how much fake content is served), and rotates banners against repeated scanning. The persona is picked by a UCB1 bandit that learns from how long attackers keep interacting. The finding's class, the profile and the behaviour-model label all steer the choice. Every change is stored with its reason. |
+| Response | `firewall.py` | Blocks attacker IPs with Windows Defender Firewall (`netsh`) or Linux `iptables`. Dry-run option, optional operator approval for automatic blocks, allowlist, gateway protection, TTL expiry and a cap on active blocks. |
+| Intel | `intel.py`, `mitre.py` | Campaign linking, indicator export (JSON/CSV), MITRE ATT&CK mapping per finding and a STIX 2.1 bundle export. |
 | Console | `admin_app.py`, `admin/index.html` | Operator console on `127.0.0.1:9100`: alerts, attacker timelines, live events, block/unblock, persona control, listener and model status. |
 
-Scoring: rule points (up to 90) plus ML points (up to 40), capped at 100.
+Scoring: rule points (up to 90) plus ML points (pretrained models up to 40,
+behaviour model up to 20), capped at 100.
 Severity is `LOW` below 45, `MEDIUM` from 45, `HIGH` from 75. A finding in a
 blocking class with a score of at least 75 is recorded as a block. A firewall
 rule is created only when `response.enforce` is true; otherwise the block is
@@ -52,6 +57,27 @@ Run the test suite:
 The tests use a temporary database and a fake firewall runner, so they never
 create a firewall rule.
 
+## Behaviour model (train once per install)
+
+The bundle lives in `sensor/data/` (not in git). Train it before the first start:
+
+```bash
+../venv313/Scripts/python.exe -m sensor.tools.train_behaviour --compare-rules --metrics ../report/data/behaviour_evaluation.json
+```
+
+That trains on 600 generated lab sessions written in the sensor's own event
+format, with the generating scenario as the label. It reports cross-validated
+precision, recall and F1 per class (GroupKFold by session), a confusion matrix,
+the benign false-positive rate, and per-class detection rate of the rules versus
+the model. Lab results are close to perfect because generated sessions are
+cleaner than real traffic; they show the features separate the families, not
+field accuracy.
+
+To learn from real traffic, label sources in the console
+(`POST /api/sources/{ip}/label` with one of the five classes), then retrain with
+`--db sensor/data/sensor.sqlite3` and load the new bundle with
+`POST /api/models/behaviour/reload` (no restart needed).
+
 ## Configuration
 
 Defaults are in `sensor/config.json`. Put overrides in any JSON file and
@@ -66,8 +92,11 @@ start with `--config path.json` or `HONEYPOT_SENSOR_CONFIG=path.json`.
 | `admin.host` / `admin.port` | `127.0.0.1` / `9100` | Operator console. The config is rejected if `host` is not a loopback address. |
 | `detection.*` | see file | Window sizes and minimum counts for each rule. |
 | `ml.cic_weight` / `ml.unsw_weight` | `30` / `10` | Maximum score points each model can add. |
+| `ml.behaviour_model` / `ml.behaviour_weight` | `data/behaviour_model.joblib` / `20` | Behaviour model bundle and its maximum points. |
 | `firewall_log.enabled` | `false` | Read `pfirewall.log`. Needs `scripts/setup_firewall.ps1` first. |
-| `response.enforce` | `false` | **false = dry run** (decisions logged, no firewall rule). **true = real blocks.** |
+| `response.enforce` | see file | **false = dry run** (decisions logged, no firewall rule). **true = real blocks.** |
+| `response.backend` | `auto` | `netsh` (Windows), `iptables` (Linux) or `auto`. |
+| `response.require_approval` | `false` | **true** = automatic blocks wait as `AWAITING_APPROVAL` until an operator approves (`POST /api/blocks/{id}/approve`) or rejects them. The dashboard's Blocks panel shows them with Approve/Reject buttons. |
 | `response.block_min_score` | `75` | Score needed for an automatic block. |
 | `response.block_classes` | PORT_SCAN, SSH_BRUTE_FORCE, HTTP_ENDPOINT_PROBING, HONEYTOKEN_REUSE, HOST_DISCOVERY | Classes that can trigger a block. |
 | `response.block_ttl_minutes` | `1440` | Automatic unblock after 24 h. `0` = permanent. |
@@ -148,6 +177,20 @@ sensor console on 127.0.0.1 with the admin token, so the token never reaches
 the browser. Keep the backend on 127.0.0.1, and start the sensor first. Set
 `VITE_DATA_SOURCE=postgres` in the frontend to go back to the database routes.
 
+## Linux / Docker
+
+From the project root:
+
+```bash
+docker compose up -d --build
+docker compose exec sensor cat sensor/data/admin_token.txt
+```
+
+The image trains the behaviour model at build time and uses
+`sensor/docker.json`: iptables backend, dry run, approval required. Host
+networking and `NET_ADMIN` let it see real source addresses and block them on
+the host. The console stays on the host's 127.0.0.1:9100.
+
 ## Honest limits
 
 - **ML models.** Both models load and score every connection. The CIC-IDS2017
@@ -167,15 +210,18 @@ the browser. Keep the backend on 127.0.0.1, and start the sensor first. Set
 - **Blocking precision.** A blocked IP is a source address. Behind NAT, one IP
   can represent many people. On a campus LAN, each device usually has its own
   address, but check before enforcing.
-- **Windows only** for blocking and the firewall log. The listeners are
-  portable.
+- **Behaviour model data.** It is trained on generated lab sessions until
+  enough real sessions are labelled. Its lab scores are not field accuracy.
+- **Firewall log is Windows only.** Blocking works on Windows (netsh) and Linux
+  (iptables, including the Docker image). The listeners are portable.
 - **Not a full sandbox.** The decoys are simulated and never run commands. Still,
   run the sensor under a non-admin account where possible, keep the machine
   patched, and treat `sensor/data/` as sensitive: it holds attacker-supplied
   passwords and payloads.
-- **Privacy.** Credentials typed by others are stored in plain text, as is
-  common for honeypot telemetry. Limit access to the database and follow the
-  college's data-retention rules.
+- **Privacy.** With `privacy.redact_secrets` on (the default), typed passwords
+  are stored only as short SHA-256 digests and form passwords are masked, after
+  honeytoken matching has run. Usernames, paths and payloads are still stored.
+  Limit access to the database and follow the college's data-retention rules.
 
 ## File map
 
@@ -184,7 +230,13 @@ sensor/
   main.py              process entry point and runtime wiring
   config.py / config.json
   engine.py            detection rules and scoring
-  ml.py                model loading, feature building, scoring
+  ml.py                pretrained model loading, feature building, scoring
+  behaviour.py         behaviour model (own telemetry): features, training, scoring
+  profiler.py          behavioural attacker profile
+  policy.py            UCB1 persona bandit (learns from engagement)
+  webattacks.py        web-attack signatures
+  mitre.py / intel.py  ATT&CK mapping, STIX export, campaigns and indicators
+  privacy.py           secret redaction before storage
   deception.py         personas, fake content, honeytokens
   firewall.py          block manager (netsh), safety checks
   store.py             SQLite store
@@ -194,7 +246,9 @@ sensor/
   admin/index.html     operator console UI
   listeners/           bait.py, ssh.py, http_decoy.py, fwlog.py, common.py
   tools/simulate_probes.py   test traffic against your own sensor
+  tools/train_behaviour.py   lab scenarios + operator labels -> behaviour model
+  docker.json          overrides for the Linux container
   scripts/setup_firewall.ps1 firewall setup and undo
   data/                created at runtime (database, host key, admin token)
-tests/test_sensor.py   unit and integration tests
+tests/                 unit and integration tests (fake firewall runner)
 ```

@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 import time
 
 from . import intel, mitre
+from .behaviour import CLASSES as BEHAVIOUR_CLASSES
 from .deception import PERSONAS
 
 if TYPE_CHECKING:
@@ -34,6 +35,15 @@ CONSOLE_HTML = Path(__file__).resolve().parent / "admin" / "index.html"
 class BlockRequest(BaseModel):
     ip: str = Field(min_length=3, max_length=45)
     reason: str = Field(default="manual block from operator console", max_length=200)
+    ttl_minutes: int | None = Field(default=None, ge=0, le=60 * 24 * 365)
+
+
+class LabelRequest(BaseModel):
+    label: str
+    note: str = Field(default="", max_length=200)
+
+
+class ApprovalRequest(BaseModel):
     ttl_minutes: int | None = Field(default=None, ge=0, le=60 * 24 * 365)
 
 
@@ -96,6 +106,30 @@ def create_admin_app(runtime: "SensorRuntime") -> FastAPI:
             row["blocked"] = row["src_ip"] in blocked
         return {"sources": rows}
 
+    @app.post("/api/sources/{ip}/label", dependencies=[auth])
+    def label_source(ip: str, body: LabelRequest) -> dict:
+        """Ground truth for retraining the behaviour model."""
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="Invalid IP address") from exc
+        if body.label not in BEHAVIOUR_CLASSES:
+            raise HTTPException(status_code=400,
+                                detail=f"label must be one of {', '.join(BEHAVIOUR_CLASSES)}")
+        runtime.store.add_label(ip, body.label, body.note)
+        return {"ip": ip, "label": body.label}
+
+    @app.get("/api/labels", dependencies=[auth])
+    def labels() -> dict:
+        return {"labels": runtime.store.labels(), "classes": list(BEHAVIOUR_CLASSES)}
+
+    @app.post("/api/models/behaviour/reload", dependencies=[auth])
+    def reload_behaviour() -> dict:
+        if runtime.behaviour is None:
+            raise HTTPException(status_code=400, detail="ML is disabled in the config")
+        runtime.behaviour.reload()
+        return runtime.behaviour.status()
+
     @app.get("/api/timeline/{ip}", dependencies=[auth])
     def timeline(ip: str, limit: int = Query(default=200, ge=1, le=1000)) -> dict:
         entries: list[dict] = []
@@ -116,6 +150,7 @@ def create_admin_app(runtime: "SensorRuntime") -> FastAPI:
     def blocks() -> dict:
         return {
             "active": runtime.store.active_blocks(),
+            "awaiting_approval": runtime.store.blocks_awaiting_approval(),
             "history": runtime.store.block_history(limit=200),
             "firewall": runtime.blocker.status(),
         }
@@ -142,6 +177,20 @@ def create_admin_app(runtime: "SensorRuntime") -> FastAPI:
         if row is None:
             raise HTTPException(status_code=404, detail="No active block for that IP")
         return row
+
+    @app.post("/api/blocks/{block_id}/approve", dependencies=[auth])
+    def approve_block(block_id: int, body: ApprovalRequest | None = None) -> dict:
+        try:
+            return runtime.blocker.approve(block_id, body.ttl_minutes if body else None)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/blocks/{block_id}/reject", dependencies=[auth])
+    def reject_block(block_id: int) -> dict:
+        try:
+            return runtime.blocker.reject(block_id)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.post("/api/blocks/expire", dependencies=[auth])
     def expire_now() -> dict:

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Ban, Unlock, ShieldCheck, AlertTriangle, Info } from "lucide-react";
+import { Ban, Unlock, ShieldCheck, AlertTriangle, Info, Check, X } from "lucide-react";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -26,9 +26,18 @@ export function FirewallBanner({ firewall }) {
   );
 }
 
-export default function BlocksPanel({ blocks, onUnblock }) {
+export default function BlocksPanel({ blocks, onUnblock, onDecide }) {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const awaiting = blocks.awaiting || [];
+
+  async function handleDecide(block, approve) {
+    setBusy(`decide-${block.id}`);
+    setError("");
+    const result = await onDecide(block.id, approve);
+    if (!result.ok) setError(result.message);
+    setBusy("");
+  }
 
   async function handleUnblock(ip) {
     setBusy(ip);
@@ -52,7 +61,52 @@ export default function BlocksPanel({ blocks, onUnblock }) {
       {error && (
         <div className="error-banner" role="alert" style={{ marginTop: 12 }}>
           <AlertTriangle size={18} />
-          <div><strong>Unblock failed</strong><p>{error}</p></div>
+          <div><strong>Action failed</strong><p>{error}</p></div>
+        </div>
+      )}
+
+      {awaiting.length > 0 && onDecide && (
+        <div className="table-scroll" style={{ marginTop: 12 }}>
+          <h3 style={{ margin: "0 0 8px" }}>Awaiting your approval</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Reason</th>
+                <th>Requested at</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {awaiting.map((block) => (
+                <tr key={block.id}>
+                  <td><span className="source-name">{block.ip}</span></td>
+                  <td>{block.reason}</td>
+                  <td>{formatDate(block.created)}</td>
+                  <td style={{ display: "flex", gap: 6 }}>
+                    <button
+                      className="button-secondary"
+                      onClick={() => handleDecide(block, true)}
+                      disabled={busy === `decide-${block.id}`}
+                      aria-label={`Approve block of ${block.ip}`}
+                    >
+                      <Check size={15} />
+                      Approve
+                    </button>
+                    <button
+                      className="button-secondary"
+                      onClick={() => handleDecide(block, false)}
+                      disabled={busy === `decide-${block.id}`}
+                      aria-label={`Reject block of ${block.ip}`}
+                    >
+                      <X size={15} />
+                      Reject
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

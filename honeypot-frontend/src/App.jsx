@@ -243,7 +243,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [deceptionActions, setDeceptionActions] = useState([]);
-  const [blocks, setBlocks] = useState({ active: [], history: [], firewall: null });
+  const [blocks, setBlocks] = useState({ active: [], awaiting: [], history: [], firewall: null });
   const [selectedAlert, setSelectedAlert] = useState(null);
 
   const [search, setSearch] = useState("");
@@ -423,6 +423,16 @@ export default function App() {
     }
   };
 
+  const decideBlock = async (blockId, approve) => {
+    try {
+      await (approve ? api.approveBlock(blockId) : api.rejectBlock(blockId));
+      await refreshBlocks();
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, message: err.message || "The decision was refused." };
+    }
+  };
+
   const openAlert = async (alert) => {
     setSelectedAlert(alert);
 
@@ -595,7 +605,7 @@ export default function App() {
                     />
                   </section>
 
-                  <BlocksPanel blocks={blocks} onUnblock={unblockSource} />
+                  <BlocksPanel blocks={blocks} onUnblock={unblockSource} onDecide={decideBlock} />
 
                   <DeceptionHistory
                     actions={deceptionActions}

@@ -75,6 +75,15 @@ CREATE TABLE IF NOT EXISTS honeytokens (
     token_kind TEXT NOT NULL,
     token TEXT NOT NULL UNIQUE
 );
+
+-- Ground-truth labels set by an operator, used to train the behaviour model.
+CREATE TABLE IF NOT EXISTS source_labels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts REAL NOT NULL,
+    src_ip TEXT NOT NULL,
+    label TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT ''
+);
 """
 
 
@@ -348,7 +357,7 @@ class Store:
                 """
                 SELECT * FROM blocks
                 WHERE ip = ? AND released_ts IS NULL
-                  AND status IN ('PENDING', 'ACTIVE', 'DRY_RUN', 'REMOVING')
+                  AND status IN ('AWAITING_APPROVAL', 'PENDING', 'ACTIVE', 'DRY_RUN', 'REMOVING')
                 ORDER BY id DESC LIMIT 1
                 """,
                 (ip,),
@@ -366,6 +375,21 @@ class Store:
                 """
             ).fetchall()
         return [self._block_row(row) for row in rows]
+
+    def blocks_awaiting_approval(self) -> list[dict]:
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT * FROM blocks WHERE status = 'AWAITING_APPROVAL' ORDER BY id DESC"
+            ).fetchall()
+        return [self._block_row(row) for row in rows]
+
+    def approve_block(self, block_id: int, expires_ts: float | None) -> None:
+        """Move an approved block into the normal queue; its TTL starts now."""
+        with self._lock:
+            self._conn.execute(
+                "UPDATE blocks SET status = 'PENDING', expires_ts = ? WHERE id = ?",
+                (expires_ts, block_id),
+            )
 
     def blocks_due_for_expiry(self, now: float) -> list[dict]:
         with self._lock:
@@ -481,3 +505,33 @@ class Store:
                 (src_ip, token_kind),
             ).fetchone()
         return row["token"] if row else None
+
+    # ------------------------------------------------------------------
+    # Operator labels and training data
+    # ------------------------------------------------------------------
+
+    def add_label(self, src_ip: str, label: str, note: str = "") -> None:
+        with self._lock:
+            self._conn.execute(
+                "INSERT INTO source_labels (ts, src_ip, label, note) VALUES (?, ?, ?, ?)",
+                (time.time(), src_ip, label, note),
+            )
+
+    def labels(self) -> dict[str, str]:
+        """Latest operator label for every labelled source."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT src_ip, label FROM source_labels ORDER BY id ASC"
+            ).fetchall()
+        return {row["src_ip"]: row["label"] for row in rows}
+
+    def events_for(self, src_ip: str, limit: int = 20000) -> list[Event]:
+        """Stored events of one source as Event objects, oldest first."""
+        with self._lock:
+            rows = self._conn.execute(
+                "SELECT ts, kind, src_ip, dst_port, service, detail FROM events"
+                " WHERE src_ip = ? ORDER BY ts ASC LIMIT ?",
+                (src_ip, limit),
+            ).fetchall()
+        return [Event(row["kind"], row["src_ip"], row["dst_port"], row["service"] or "-",
+                      row["ts"], json.loads(row["detail"])) for row in rows]

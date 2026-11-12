@@ -174,7 +174,8 @@ def _firewall_summary(firewall: dict) -> dict:
     if not firewall["enabled"]:
         state, message = "disabled", "Blocking is turned off in the sensor config."
     elif firewall["enforce"] and firewall["elevated"]:
-        state, message = "enforce", "Blocks are applied as Windows Firewall rules."
+        backend = "iptables" if firewall.get("backend") == "iptables" else "Windows Firewall"
+        state, message = "enforce", f"Blocks are applied as {backend} rules."
     elif firewall["enforce"]:
         state, message = "not_elevated", (
             "The sensor is not running as Administrator, so blocks will fail. "
@@ -182,8 +183,11 @@ def _firewall_summary(firewall: dict) -> dict:
         )
     else:
         state, message = "dry_run", "Dry run: blocks are recorded but no firewall rule is created."
+    if firewall.get("require_approval"):
+        message += " Automatic blocks wait for operator approval."
     return {"state": state, "message": message, "mode": firewall["mode"],
-            "enforce": firewall["enforce"], "elevated": firewall["elevated"]}
+            "enforce": firewall["enforce"], "elevated": firewall["elevated"],
+            "require_approval": bool(firewall.get("require_approval"))}
 
 
 def _all_findings() -> list[dict]:
@@ -320,6 +324,7 @@ def blocks() -> dict:
     data = _call("GET", "/api/blocks")
     return {
         "active": [_map_block(item) for item in data["active"]],
+        "awaiting": [_map_block(item) for item in data.get("awaiting_approval", [])],
         "history": [_map_block(item) for item in data["history"]],
         "firewall": _firewall_summary(data["firewall"]),
     }
@@ -336,6 +341,16 @@ def block_source(body: BlockRequest) -> dict:
 @router.delete("/blocks/{ip}")
 def unblock_source(ip: str) -> dict:
     return _map_block(_call("DELETE", f"/api/blocks/{ip}"))
+
+
+@router.post("/blocks/{block_id}/approve")
+def approve_block(block_id: int) -> dict:
+    return _map_block(_call("POST", f"/api/blocks/{block_id}/approve"))
+
+
+@router.post("/blocks/{block_id}/reject")
+def reject_block(block_id: int) -> dict:
+    return _map_block(_call("POST", f"/api/blocks/{block_id}/reject"))
 
 
 @router.post("/alerts/{alert_id}/block")
